@@ -6,17 +6,17 @@
   :root {
     --primary: 37 99 235;
     --primary-foreground: 255 255 255;
-    --background: 10 10 10;
-    --foreground: 255 255 255;
-    --card: 26 26 26;
-    --border: rgba(37, 99, 235, 0.2);
+    --background: 249 250 251;
+    --foreground: 17 24 39;
+    --card: 255 255 255;
+    --border: rgba(229, 231, 235, 1);
     --ring: 37 99 235;
   }
-  
+
   * {
     @apply border-border;
   }
-  
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;

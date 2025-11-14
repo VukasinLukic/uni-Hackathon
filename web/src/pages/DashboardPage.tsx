@@ -9,7 +9,7 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Welcome to RoadSense Dashboard
+            Welcome to Pave Patrol Dashboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Hello, {user?.displayName || user?.email}!

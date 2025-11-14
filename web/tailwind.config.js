@@ -11,16 +11,17 @@ export default {
         primary: {
           DEFAULT: '#2563eb', // Blue for RoadSense
           foreground: '#ffffff',
+          hover: '#1d4ed8',
         },
-        background: '#0a0a0a',
-        foreground: '#ffffff',
-        card: '#1a1a1a',
-        border: 'rgba(37, 99, 235, 0.2)',
+        background: '#f9fafb', // Light gray background
+        foreground: '#111827', // Dark text
+        card: '#ffffff',
+        border: 'rgba(229, 231, 235, 1)', // Gray border
         destructive: {
           DEFAULT: '#ef4444',
           foreground: '#ffffff',
         },
-        muted: '#262626',
+        muted: '#f3f4f6',
         accent: '#2563eb',
         ring: '#2563eb',
       },
