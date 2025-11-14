@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "RoadSense",
+    "slug": "roadsense-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2563eb"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.roadsense.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "RoadSense needs your location to detect potholes while you drive.",
+        "NSLocationAlwaysUsageDescription": "RoadSense needs background location to continue detecting potholes.",
+        "NSMotionUsageDescription": "RoadSense uses motion sensors to detect potholes from vibrations.",
+        "NSCameraUsageDescription": "RoadSense needs camera access to photograph potholes."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow RoadSense to use your location to detect potholes."
+        }
+      ]
+    ]
+  }
+}
