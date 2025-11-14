@@ -1,90 +1,82 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 
 export default function App() {
   const [count, setCount] = React.useState(0);
 
   return (
-    <ScrollView className="flex-1 bg-background">
-      <View className="flex-1 items-center justify-center p-8 min-h-screen">
+    <ScrollView style={styles.container}>
+      <View style={styles.content}>
         {/* Hero Section */}
-        <View className="mb-12">
-          <Text className="text-6xl font-black text-white text-center mb-4">
-            RoadSense
-          </Text>
-          <Text className="text-2xl text-primary text-center font-bold">
-            Timișoara
-          </Text>
-          <Text className="text-gray-400 text-center mt-4 text-lg">
-            Smart pothole detection
-          </Text>
+        <View style={styles.hero}>
+          <Text style={styles.title}>RoadSense</Text>
+          <Text style={styles.subtitle}>Timișoara</Text>
+          <Text style={styles.description}>Smart pothole detection</Text>
         </View>
 
         {/* Demo Card */}
-        <View className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 w-full max-w-md mb-8">
-          <Text className="text-2xl font-bold text-white mb-2">
-            🎨 NativeWind is Working!
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>
+            🎨 React Native App Working!
           </Text>
-          <Text className="text-gray-300 mb-6">
-            Tailwind CSS utilities working in React Native via NativeWind
+          <Text style={styles.cardDescription}>
+            Expo SDK 54 + TypeScript + React Native
           </Text>
 
           {/* Counter */}
-          <View className="flex-row items-center justify-center gap-4 mb-6">
+          <View style={styles.counter}>
             <TouchableOpacity
               onPress={() => setCount(count - 1)}
-              className="bg-transparent border-2 border-white/30 px-6 py-3 rounded-xl"
+              style={styles.buttonOutline}
             >
-              <Text className="text-white text-2xl font-bold">-</Text>
+              <Text style={styles.buttonText}>-</Text>
             </TouchableOpacity>
 
-            <Text className="text-4xl font-bold text-primary min-w-[80px] text-center">
-              {count}
-            </Text>
+            <Text style={styles.countText}>{count}</Text>
 
             <TouchableOpacity
               onPress={() => setCount(count + 1)}
-              className="bg-primary px-6 py-3 rounded-xl"
+              style={styles.buttonPrimary}
             >
-              <Text className="text-white text-2xl font-bold">+</Text>
+              <Text style={styles.buttonText}>+</Text>
             </TouchableOpacity>
           </View>
 
           {/* Features */}
-          <View className="gap-3">
-            <View className="bg-white/5 p-4 rounded-xl border border-white/10">
-              <Text className="text-xl mb-1">📱</Text>
-              <Text className="font-semibold text-white">Sensor Detection</Text>
-              <Text className="text-sm text-gray-400">Accelerometer + GPS</Text>
+          <View style={styles.features}>
+            <View style={styles.feature}>
+              <Text style={styles.emoji}>📱</Text>
+              <Text style={styles.featureTitle}>Sensor Detection</Text>
+              <Text style={styles.featureDesc}>Accelerometer + GPS</Text>
             </View>
 
-            <View className="bg-white/5 p-4 rounded-xl border border-white/10">
-              <Text className="text-xl mb-1">🗺️</Text>
-              <Text className="font-semibold text-white">Live Map</Text>
-              <Text className="text-sm text-gray-400">Real-time alerts</Text>
+            <View style={styles.feature}>
+              <Text style={styles.emoji}>🗺️</Text>
+              <Text style={styles.featureTitle}>Live Map</Text>
+              <Text style={styles.featureDesc}>Real-time alerts</Text>
             </View>
 
-            <View className="bg-white/5 p-4 rounded-xl border border-white/10">
-              <Text className="text-xl mb-1">📸</Text>
-              <Text className="font-semibold text-white">Photo Capture</Text>
-              <Text className="text-sm text-gray-400">AI validation</Text>
+            <View style={styles.feature}>
+              <Text style={styles.emoji}>📸</Text>
+              <Text style={styles.featureTitle}>Photo Capture</Text>
+              <Text style={styles.featureDesc}>AI validation</Text>
             </View>
           </View>
         </View>
 
         {/* Buttons */}
-        <View className="flex-row gap-4">
-          <TouchableOpacity className="bg-primary px-6 py-3 rounded-xl">
-            <Text className="text-white font-semibold">Start Drive</Text>
+        <View style={styles.actions}>
+          <TouchableOpacity style={styles.actionPrimary}>
+            <Text style={styles.actionText}>Start Drive</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity className="bg-transparent border-2 border-white/30 px-6 py-3 rounded-xl">
-            <Text className="text-white font-semibold">View Map</Text>
+          <TouchableOpacity style={styles.actionOutline}>
+            <Text style={styles.actionText}>View Map</Text>
           </TouchableOpacity>
         </View>
 
         {/* Footer */}
-        <Text className="text-gray-500 text-sm mt-12 text-center">
+        <Text style={styles.footer}>
           uni-Hackathon Project{'\n'}
           Vukasin • Nemanja • Teodora
         </Text>
@@ -92,3 +84,145 @@ export default function App() {
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0a0a0a',
+  },
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    minHeight: '100%',
+  },
+  hero: {
+    marginBottom: 48,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 60,
+    fontWeight: '900',
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  subtitle: {
+    fontSize: 24,
+    color: '#2563eb',
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  description: {
+    fontSize: 18,
+    color: '#9ca3af',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    marginBottom: 32,
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 8,
+  },
+  cardDescription: {
+    fontSize: 16,
+    color: '#d1d5db',
+    marginBottom: 24,
+  },
+  counter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 24,
+  },
+  buttonOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  buttonPrimary: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  countText: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#2563eb',
+    minWidth: 80,
+    textAlign: 'center',
+  },
+  features: {
+    gap: 12,
+  },
+  feature: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  emoji: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  featureTitle: {
+    fontWeight: '600',
+    color: '#ffffff',
+    fontSize: 16,
+  },
+  featureDesc: {
+    fontSize: 14,
+    color: '#9ca3af',
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  actionPrimary: {
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  actionOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  actionText: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  footer: {
+    color: '#6b7280',
+    fontSize: 12,
+    marginTop: 48,
+    textAlign: 'center',
+  },
+});
