@@ -56,12 +56,14 @@ import potholeRoutes from './routes/potholes.routes';
 import uploadRoutes from './routes/upload.routes';
 import statsRoutes from './routes/stats.routes';
 import routeRoutes from './routes/routes.routes';
+import chatRoutes from './routes/chat.routes';
 
 app.use('/api/events', eventRoutes);
 app.use('/api/potholes', potholeRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/routes', routeRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Error handling
 app.use(
