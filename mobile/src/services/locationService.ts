@@ -53,4 +53,19 @@ export class LocationService {
   getCurrentSpeed() {
     return this.currentSpeed;
   }
+
+  async getCurrentLocationOnce(): Promise<Location.LocationObject | null> {
+    const hasPermission = await this.requestPermissions();
+    if (!hasPermission) return null;
+
+    try {
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      return location;
+    } catch (error) {
+      console.error('Failed to get current location:', error);
+      return null;
+    }
+  }
 }

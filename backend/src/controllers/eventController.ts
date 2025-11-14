@@ -47,18 +47,25 @@ export const createEvent = async (req: Request, res: Response) => {
     // Recalculate severity
     await SeverityService.updateSeverity(cluster);
 
-    // Emit real-time update
-    if (cluster.severity > 70) {
-      emitPotholeUpdate('new_pothole', cluster);
-    } else {
-      emitPotholeUpdate('pothole_updated', cluster);
-    }
-
+    // Send response IMMEDIATELY (before websocket emit)
     res.status(201).json({
       success: true,
       eventId: event._id,
       clusterId: cluster._id,
       severity: cluster.severity,
+    });
+
+    // Emit real-time update asynchronously (don't block response)
+    setImmediate(() => {
+      try {
+        if (cluster.severity > 70) {
+          emitPotholeUpdate('new_pothole', cluster);
+        } else {
+          emitPotholeUpdate('pothole_updated', cluster);
+        }
+      } catch (error) {
+        console.error('WebSocket emit error:', error);
+      }
     });
   } catch (error: any) {
     console.error('Create event error:', error);
