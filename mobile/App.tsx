@@ -1,8 +1,14 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import SensorDebugScreen from './src/screens/SensorDebugScreen';
 
 export default function App() {
   const [count, setCount] = React.useState(0);
+  const [showSensorDebug, setShowSensorDebug] = React.useState(false);
+
+  if (showSensorDebug) {
+    return <SensorDebugScreen navigation={{ goBack: () => setShowSensorDebug(false) }} />;
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -66,8 +72,11 @@ export default function App() {
 
         {/* Buttons */}
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionPrimary}>
-            <Text style={styles.actionText}>Start Drive</Text>
+          <TouchableOpacity
+            style={styles.actionPrimary}
+            onPress={() => setShowSensorDebug(true)}
+          >
+            <Text style={styles.actionText}>🔬 Sensor Debug</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionOutline}>
