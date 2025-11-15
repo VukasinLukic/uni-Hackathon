@@ -33,6 +33,7 @@ export default {
       animation: {
         'fade-in': 'fadeIn 1s ease-out',
         'slide-up': 'slideUp 0.5s ease-out',
+        'bounce': 'bounce 1s infinite',
       },
       keyframes: {
         fadeIn: {
@@ -43,6 +44,14 @@ export default {
           from: { transform: 'translateY(100%)' },
           to: { transform: 'translateY(0)' },
         },
+        bounce: {
+          '0%, 100%': { transform: 'translateY(-25%)', animationTimingFunction: 'cubic-bezier(0.8,0,1,1)' },
+          '50%': { transform: 'none', animationTimingFunction: 'cubic-bezier(0,0,0.2,1)' },
+        },
+      },
+      transitionDelay: {
+        '100': '100ms',
+        '200': '200ms',
       },
     },
   },

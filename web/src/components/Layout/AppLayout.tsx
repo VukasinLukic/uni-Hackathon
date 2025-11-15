@@ -1,6 +1,7 @@
 import { useState, ReactNode } from 'react';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import GeminiChatWidget from '../Chatbot/GeminiChatWidget';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -32,6 +33,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* Gemini AI Chat Widget - available on all pages */}
+      <GeminiChatWidget />
     </div>
   );
 }

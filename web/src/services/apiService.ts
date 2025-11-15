@@ -160,4 +160,40 @@ export class APIService {
       return false;
     }
   }
+
+  /**
+   * Generate AI-optimized repair mission
+   * POST /api/ai-mission
+   */
+  static async generateAIMission(missionData: {
+    missionType: 'safety-first' | 'max-coverage' | 'critical-only';
+    teams: number;
+    workHours: number;
+    constraints: string[];
+  }): Promise<any> {
+    try {
+      const response = await api.post('/ai-mission', missionData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to generate AI mission:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+}
+
+/**
+ * Chat with Gemini AI assistant
+ * POST /api/gemini-chat
+ */
+export async function chatWithGemini(
+  message: string,
+  history: Array<{ role: 'user' | 'assistant'; content: string }>
+): Promise<any> {
+  try {
+    const response = await api.post('/gemini-chat', { message, history });
+    return response.data;
+  } catch (error: any) {
+    console.error('Failed to chat with Gemini:', error.response?.data || error.message);
+    throw error;
+  }
 }

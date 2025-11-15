@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage'
 import MapPage from './pages/MapPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import SettingsPage from './pages/SettingsPage'
+import AIMissionsPage from './pages/AIMissionsPage'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 
 function App() {
@@ -53,6 +54,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ai-missions"
+        element={
+          <ProtectedRoute>
+            <AIMissionsPage />
           </ProtectedRoute>
         }
       />
