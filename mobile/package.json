@@ -10,6 +10,8 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@expo-google-fonts/bakbak-one": "^0.4.1",
+    "@expo-google-fonts/gajraj-one": "^0.4.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/stack": "^6.3.20",
@@ -18,9 +20,11 @@
     "expo": "~54.0.0",
     "expo-av": "~16.0.7",
     "expo-camera": "~17.0.9",
+    "expo-font": "^14.0.9",
     "expo-linear-gradient": "^15.0.7",
     "expo-location": "~19.0.7",
     "expo-sensors": "~15.0.7",
+    "expo-splash-screen": "~31.0.10",
     "react": "^19.1.0",
     "react-dom": "19.1.0",
     "react-native": "^0.81.5",

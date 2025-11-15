@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFonts, GajrajOne_400Regular } from '@expo-google-fonts/gajraj-one';
+import { BakbakOne_400Regular } from '@expo-google-fonts/bakbak-one';
+import * as SplashScreen from 'expo-splash-screen';
+
+SplashScreen.preventAutoHideAsync();
 
 // Onboarding Screens
 import WelcomeScreen from './src/screens/onboarding/WelcomeScreen';
@@ -37,10 +42,26 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    GajrajOne_400Regular,
+    BakbakOne_400Regular,
+  });
+
   // Check if user has completed onboarding
   useEffect(() => {
     checkOnboardingStatus();
   }, []);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   const checkOnboardingStatus = async () => {
     try {

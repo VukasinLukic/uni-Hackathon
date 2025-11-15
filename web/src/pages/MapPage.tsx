@@ -1,12 +1,24 @@
 import { useEffect, useState } from 'react';
 import AppLayout from '../components/Layout/AppLayout';
 import MapView from '../components/Map/MapView';
+import MapFilters from '../components/Map/MapFilters';
+import PotholeInfoPanel from '../components/Map/PotholeInfoPanel';
+import PotholesSidebar from '../components/Map/PotholesSidebar';
 import { usePotholeStore } from '../store/usePotholeStore';
 import { Construction, Flame } from 'lucide-react';
+import { Pothole } from '../types/pothole.types';
+import { getPriorityFromReports, getAreaFromAddress } from '../utils/mapHelpers';
 
 export default function MapPage() {
-  const { loadPotholesFromAPI, viewMode, setViewMode, getFilteredPotholes } = usePotholeStore();
+  const { loadPotholesFromAPI, viewMode, setViewMode, getFilteredPotholes, potholes } = usePotholeStore();
   const [loaded, setLoaded] = useState(false);
+  const [selectedPothole, setSelectedPothole] = useState<Pothole | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [filters, setFilters] = useState({
+    area: 'All',
+    status: 'All',
+    priority: 'All',
+  });
 
   useEffect(() => {
     if (!loaded) {
@@ -18,6 +30,54 @@ export default function MapPage() {
 
   const filteredPotholes = getFilteredPotholes();
 
+  const handleFilterChange = (filterType: 'area' | 'status' | 'priority', value: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      [filterType]: value,
+    }));
+  };
+
+  const handlePotholeClick = (pothole: Pothole) => {
+    setSelectedPothole(pothole);
+  };
+
+  const handleCloseInfo = () => {
+    setSelectedPothole(null);
+  };
+
+  // Filter potholes based on frontend filters (only for markers mode)
+  const getFilteredPotholesForMarkers = () => {
+    if (viewMode !== 'markers') return filteredPotholes;
+
+    return filteredPotholes.filter((pothole) => {
+      // Status filter
+      if (filters.status && filters.status !== 'All') {
+        const statusMap: Record<string, string> = {
+          'Needs repair': 'new',
+          'Planned': 'planned',
+          'In progress': 'in_progress',
+          'Fixed': 'resolved',
+        };
+        const mappedStatus = statusMap[filters.status];
+        if (mappedStatus && pothole.status !== mappedStatus) return false;
+      }
+
+      // Priority filter (based on reports instead of severity)
+      if (filters.priority && filters.priority !== 'All') {
+        if (getPriorityFromReports(pothole.reports) !== filters.priority) return false;
+      }
+
+      // Area filter
+      if (filters.area && filters.area !== 'All') {
+        if (getAreaFromAddress(pothole.location.address || '') !== filters.area) return false;
+      }
+
+      return true;
+    });
+  };
+
+  const displayedPotholes = getFilteredPotholesForMarkers();
+
   return (
     <AppLayout>
       <div className="h-full flex flex-col">
@@ -28,7 +88,7 @@ export default function MapPage() {
               Pothole Map
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Showing {filteredPotholes.length} potholes in Timișoara
+              Showing {viewMode === 'markers' ? displayedPotholes.length : filteredPotholes.length} potholes in Timișoara
             </p>
           </div>
 
@@ -59,10 +119,33 @@ export default function MapPage() {
           </div>
         </div>
 
+        {/* Filters - ONLY for markers mode */}
+        {viewMode === 'markers' && (
+          <div className="mb-4">
+            <MapFilters potholes={potholes} filters={filters} onFilterChange={handleFilterChange} />
+          </div>
+        )}
+
         {/* Map container */}
-        <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <MapView />
+        <div className="flex-1 relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <MapView onMarkerClick={handlePotholeClick} />
+
+          {/* Sidebar - ONLY for markers mode */}
+          {viewMode === 'markers' && (
+            <PotholesSidebar
+              potholes={displayedPotholes}
+              isOpen={sidebarOpen}
+              onToggle={() => setSidebarOpen(!sidebarOpen)}
+              onPotholeClick={handlePotholeClick}
+              selectedPotholeId={selectedPothole?._id}
+            />
+          )}
         </div>
+
+        {/* Info Panel Modal - ONLY for markers mode */}
+        {viewMode === 'markers' && selectedPothole && (
+          <PotholeInfoPanel pothole={selectedPothole} onClose={handleCloseInfo} />
+        )}
       </div>
     </AppLayout>
   );

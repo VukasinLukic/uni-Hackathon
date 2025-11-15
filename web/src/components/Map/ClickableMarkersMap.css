@@ -1,0 +1,16 @@
+.clickable-markers-map {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.custom-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-marker:hover {
+  z-index: 1000 !important;
+}
