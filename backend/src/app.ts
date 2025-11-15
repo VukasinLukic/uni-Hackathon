@@ -57,6 +57,8 @@ import uploadRoutes from './routes/upload.routes';
 import statsRoutes from './routes/stats.routes';
 import routeRoutes from './routes/routes.routes';
 import chatRoutes from './routes/chat.routes';
+import aiMissionRoutes from './routes/aiMission.routes';
+import geminiChatRoutes from './routes/geminiChat.routes';
 
 app.use('/api/events', eventRoutes);
 app.use('/api/potholes', potholeRoutes);
@@ -64,6 +66,8 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/routes', routeRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/ai-mission', aiMissionRoutes);
+app.use('/api/gemini-chat', geminiChatRoutes);
 
 // Error handling
 app.use(
