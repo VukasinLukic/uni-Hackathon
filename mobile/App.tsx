@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep splash screen visible while loading fonts
+SplashScreen.preventAutoHideAsync();
 
 // Onboarding Screens
 import WelcomeScreen from './src/screens/onboarding/WelcomeScreen';
@@ -37,10 +42,11 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
-  // Check if user has completed onboarding
-  useEffect(() => {
-    checkOnboardingStatus();
-  }, []);
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    'Gajraj-One': require('./assets/fonts/GajrajOne-Regular.ttf'),
+    'Bakbak-One': require('./assets/fonts/BakbakOne-Regular.ttf'),
+  });
 
   const checkOnboardingStatus = async () => {
     try {
@@ -53,6 +59,22 @@ export default function App() {
       console.error('Error checking onboarding status:', error);
     }
   };
+
+  // Check if user has completed onboarding
+  useEffect(() => {
+    checkOnboardingStatus();
+  }, []);
+
+  // Hide splash screen when fonts are loaded
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   const completeOnboarding = async () => {
     try {

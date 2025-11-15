@@ -14,7 +14,7 @@ export class AIVisionService {
     reason?: string;
   }> {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
       const prompt = `Analyze this image and determine if it contains a pothole or road damage.
 

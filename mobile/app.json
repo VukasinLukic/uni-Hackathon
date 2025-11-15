@@ -28,7 +28,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow RoadSense to use your location to detect potholes."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

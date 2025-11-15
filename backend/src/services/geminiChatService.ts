@@ -84,7 +84,7 @@ ${nearbyPotholes
 - Always prioritize user safety
 - Use Serbian language if user writes in Serbian, otherwise English`;
 
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
       const chat = model.startChat({
         history: [
@@ -173,7 +173,7 @@ ${nearbyPotholes
         severity: { $gte: 50 }, // Only warn about medium+ severity
       }).sort({ severity: -1 });
 
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
       const prompt = `Korisnik planira putovanje od [${origin.lat}, ${origin.lng}] do [${destination.lat}, ${destination.lng}].
 
