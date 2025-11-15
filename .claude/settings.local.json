@@ -29,7 +29,8 @@
       "Bash(npm run diagnose:*)",
       "Bash(npm run create-indexes:*)",
       "Bash(taskkill //F //PID 19544)",
-      "Bash(npx expo prebuild:*)"
+      "Bash(npx expo prebuild:*)",
+      "Bash(npx ts-node:*)"
     ],
     "deny": [],
     "ask": []
