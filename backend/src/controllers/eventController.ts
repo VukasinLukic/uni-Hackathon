@@ -3,6 +3,9 @@ import { Event } from '../models/Event.model';
 import { ClusteringService } from '../services/clusteringService';
 import { SeverityService } from '../services/severityService';
 import { emitPotholeUpdate } from '../websocket/socketHandler';
+import { XPService } from '../services/xpService';
+import { AchievementService } from '../services/achievementService';
+import { User } from '../models/User.model';
 
 const clusteringService = new ClusteringService();
 
@@ -45,16 +48,33 @@ export const createEvent = async (req: Request, res: Response) => {
         )
       ]) as any;
 
+      let isNewDetection = false;
+
       if (cluster) {
         // Add to existing cluster
         cluster = await clusteringService.addEventToCluster(cluster, event);
         event.clusterId = cluster._id as any;
         await event.save();
       } else {
-        // Create new cluster
+        // Create new cluster - award XP for new pothole detection!
         cluster = await clusteringService.createNewCluster(event);
         event.clusterId = cluster._id as any;
         await event.save();
+        isNewDetection = true;
+      }
+
+      // Award XP and check achievements if user is authenticated
+      if (userId !== 'anonymous' && isNewDetection) {
+        // Award XP for detecting pothole (20 XP)
+        await XPService.awardXPForAction(userId, 'detect_pothole');
+
+        // Update user stats
+        await User.findByIdAndUpdate(userId, {
+          $inc: { 'stats.potholesDetected': 1 },
+        });
+
+        // Check for newly unlocked achievements
+        await AchievementService.checkAndUnlockAchievements(userId);
       }
 
       // Recalculate severity (in background, don't block)

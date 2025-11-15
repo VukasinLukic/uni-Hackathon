@@ -4,10 +4,14 @@ import { CloudinaryService } from '../services/cloudinaryService';
 import { AIVisionService } from '../services/aiVisionService';
 import { SeverityService } from '../services/severityService';
 import { emitPotholeUpdate } from '../websocket/socketHandler';
+import { XPService } from '../services/xpService';
+import { AchievementService } from '../services/achievementService';
+import { User } from '../models/User.model';
 
 export const uploadPotholePhoto = async (req: Request, res: Response) => {
   try {
     const { potholeId, imageBase64 } = req.body;
+    const userId = (req as any).userId; // From auth middleware
 
     if (!potholeId || !imageBase64) {
       return res.status(400).json({
@@ -53,6 +57,20 @@ export const uploadPotholePhoto = async (req: Request, res: Response) => {
 
     await pothole.save();
 
+    // Award XP for AI-verified pothole if user is authenticated
+    if (userId && aiValidation.isValid && aiValidation.confidence > 70) {
+      // Award 100 XP for verified pothole
+      await XPService.awardXPForAction(userId, 'verify_pothole');
+
+      // Update user stats
+      await User.findByIdAndUpdate(userId, {
+        $inc: { 'stats.confirmedPotholes': 1 },
+      });
+
+      // Check for newly unlocked achievements
+      await AchievementService.checkAndUnlockAchievements(userId);
+    }
+
     // Emit real-time update
     emitPotholeUpdate('pothole_updated', pothole);
 
@@ -66,6 +84,7 @@ export const uploadPotholePhoto = async (req: Request, res: Response) => {
         severity: pothole.severity,
         aiReason: aiValidation.reason,
       },
+      xpAwarded: aiValidation.isValid && aiValidation.confidence > 70 ? 100 : 0,
     });
   } catch (error: any) {
     console.error('❌ Upload error:', error);

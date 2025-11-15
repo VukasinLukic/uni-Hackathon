@@ -1,10 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import { User } from '../models/User.model';
 import { verifyAccessToken } from '../config/jwt';
+import { Auth0Service } from '../services/auth0Service';
 
 /**
- * JWT Authentication Middleware
- * Verifies access token and attaches user info to request
+ * Hybrid Authentication Middleware
+ * Supports both custom JWT tokens and Auth0 tokens
+ *
+ * Priority:
+ * 1. Try to verify as Auth0 token
+ * 2. If fails, try to verify as custom JWT token
+ * 3. If both fail, return 401
  */
 export const authenticate = async (
   req: Request,
@@ -23,19 +29,50 @@ export const authenticate = async (
 
     const token = authHeader.substring(7); // Remove "Bearer " prefix
 
-    // Verify token
-    const payload = verifyAccessToken(token);
+    // Try Auth0 token first
+    try {
+      const auth0Payload = await Auth0Service.verifyAuth0Token(token);
 
-    // Attach userId to request
-    (req as any).userId = payload.userId;
-    (req as any).userEmail = payload.email;
-    (req as any).username = payload.username;
+      // Find user by Auth0 ID
+      const user = await User.findOne({ auth0Id: auth0Payload.sub });
 
-    next();
+      if (user) {
+        (req as any).userId = (user._id as any).toString();
+        (req as any).userEmail = user.email;
+        (req as any).username = user.username;
+        (req as any).authType = 'auth0';
+        return next();
+      } else {
+        // User doesn't exist in our DB yet
+        return res.status(401).json({
+          success: false,
+          error: 'User not found. Please complete authentication via /api/auth/auth0/callback',
+        });
+      }
+    } catch (auth0Error) {
+      // Auth0 verification failed, try custom JWT
+      try {
+        const payload = verifyAccessToken(token);
+
+        // Attach userId to request
+        (req as any).userId = payload.userId;
+        (req as any).userEmail = payload.email;
+        (req as any).username = payload.username;
+        (req as any).authType = 'custom';
+
+        next();
+      } catch (jwtError) {
+        // Both Auth0 and custom JWT failed
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid or expired token',
+        });
+      }
+    }
   } catch (error: any) {
     return res.status(401).json({
       success: false,
-      error: 'Invalid or expired token',
+      error: 'Authentication error',
     });
   }
 };

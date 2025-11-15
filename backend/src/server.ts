@@ -5,6 +5,7 @@ import app from './app';
 import { connectDB } from './config/database';
 import { createServer } from 'http';
 import { initializeSocket } from './websocket/socketHandler';
+import { setupCronJobs } from './services/cronJobs';
 
 const PORT = process.env.PORT || 5000;
 
@@ -18,6 +19,9 @@ const startServer = async () => {
 
     // Initialize Socket.IO
     initializeSocket(httpServer);
+
+    // Setup cron jobs
+    setupCronJobs();
 
     // Start server
     httpServer.listen(PORT, () => {

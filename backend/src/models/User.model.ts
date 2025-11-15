@@ -4,9 +4,10 @@ import bcrypt from 'bcryptjs';
 export interface IUser extends Document {
   email: string;
   username: string;
-  password: string;
+  password?: string; // Optional for Auth0 users
   avatarUrl?: string;
   role: 'driver' | 'official' | 'admin';
+  auth0Id?: string; // Auth0 user ID (e.g., "google-oauth2|123456")
 
   // Gamification fields
   level: number;
@@ -34,8 +35,9 @@ const UserSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true, lowercase: true },
     username: { type: String, required: true, unique: true },
-    password: { type: String, required: true, select: false },
+    password: { type: String, select: false }, // Not required for Auth0 users
     avatarUrl: String,
+    auth0Id: { type: String, unique: true, sparse: true, index: true }, // Sparse index allows null values
     role: {
       type: String,
       enum: ['driver', 'official', 'admin'],
@@ -68,12 +70,15 @@ const UserSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-// Hash password before saving
+// Hash password before saving (only for email/password users)
 UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  // Skip if password is not modified or doesn't exist (Auth0 users)
+  if (!this.password || !this.isModified('password')) {
+    return next();
+  }
 
   const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  this.password = await bcrypt.hash(this.password as string, salt);
   next();
 });
 
@@ -81,6 +86,8 @@ UserSchema.pre('save', async function (next) {
 UserSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
+  // If no password (Auth0 user), return false
+  if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 
