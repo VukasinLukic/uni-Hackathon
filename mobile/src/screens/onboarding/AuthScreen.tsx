@@ -1,19 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
+  Alert,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAppStore } from '../../store/useAppStore';
+import { useAuth0 } from '../../contexts/Auth0Context';
 
 interface AuthScreenProps {
   onAuthComplete: () => void;
@@ -21,72 +18,18 @@ interface AuthScreenProps {
 }
 
 export default function AuthScreen({ onAuthComplete, onSkip }: AuthScreenProps) {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const { login, isLoading } = useAuth0();
 
-  const { setUser, setToken } = useAppStore();
-
-  const handleAuth = async () => {
-    // Validation
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    if (!isLogin && password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
-      return;
-    }
-
-    setIsLoading(true);
-
+  const handleAuth0Login = async () => {
     try {
-      // TODO: Replace with actual API call
-      // const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      // const response = await fetch(`${API_URL}${endpoint}`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password }),
-      // });
-
-      // Mock authentication - Replace with real backend
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const mockUser = {
-        id: 'mock-user-1',
-        email,
-        name: email.split('@')[0],
-        level: 1,
-        xp: 0,
-        totalDistance: 0,
-        potholesDetected: 0,
-      };
-
-      const mockToken = 'mock-jwt-token-' + Date.now();
-
-      // Save to AsyncStorage
-      await AsyncStorage.setItem('@auth_token', mockToken);
-      await AsyncStorage.setItem('@user', JSON.stringify(mockUser));
-
-      // Update Zustand store
-      setToken(mockToken);
-      setUser(mockUser);
-
-      console.log('✅ Authentication successful');
+      await login();
+      console.log('✅ Auth0 login successful');
       onAuthComplete();
     } catch (error: any) {
-      console.error('❌ Auth error:', error);
-      Alert.alert('Error', error.message || 'Authentication failed. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error('❌ Auth0 login error:', error);
+      if (error.error !== 'a0.session.user_cancelled') {
+        Alert.alert('Error', 'Authentication failed. Please try again.');
+      }
     }
   };
 
@@ -100,90 +43,30 @@ export default function AuthScreen({ onAuthComplete, onSkip }: AuthScreenProps) 
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.logo}>PAVE PATROL</Text>
-            <Text style={styles.subtitle}>
-              {isLogin ? 'Welcome Back!' : 'Join the Adventure'}
-            </Text>
+            <Text style={styles.subtitle}>Join the Adventure</Text>
           </View>
 
           {/* Auth Form */}
           <View style={styles.formContainer}>
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="your@email.com"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
+            <Text style={styles.description}>
+              Sign in with your Auth0 account to access all features and sync your progress
+            </Text>
 
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="••••••••"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-              />
-            </View>
-
-            {/* Confirm Password (Register only) */}
-            {!isLogin && (
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Confirm Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                />
-              </View>
-            )}
-
-            {/* Submit Button */}
+            {/* Auth0 Login Button */}
             <TouchableOpacity
               style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
-              onPress={handleAuth}
+              onPress={handleAuth0Login}
               disabled={isLoading}
               activeOpacity={0.8}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#071E35" />
-              ) : (
-                <Text style={styles.submitButtonText}>
-                  {isLogin ? 'Sign In' : 'Create Account'}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Toggle Login/Register */}
-            <TouchableOpacity
-              style={styles.toggleButton}
-              onPress={() => {
-                setIsLogin(!isLogin);
-                setConfirmPassword('');
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.toggleButtonText}>
-                {isLogin ? "Don't have an account? " : 'Already have an account? '}
-                <Text style={styles.toggleButtonTextBold}>
-                  {isLogin ? 'Sign Up' : 'Sign In'}
-                </Text>
+              <Text style={styles.submitButtonText}>
+                {isLoading ? 'Opening Auth0...' : 'Sign In with Auth0'}
               </Text>
             </TouchableOpacity>
+
+            <Text style={styles.infoText}>
+              Secure authentication powered by Auth0
+            </Text>
 
             {/* Skip Button */}
             <TouchableOpacity style={styles.skipButton} onPress={onSkip} activeOpacity={0.7}>
@@ -209,10 +92,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    paddingHorizontal: 30,
   },
   keyboardView: {
     flex: 1,
-    paddingHorizontal: 30,
   },
   header: {
     marginTop: 40,
@@ -233,32 +116,27 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
+    justifyContent: 'center',
   },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    opacity: 0.9,
-  },
-  input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+  description: {
     fontSize: 16,
     color: '#FFFFFF',
+    opacity: 0.8,
+    textAlign: 'center',
+    marginBottom: 40,
+    lineHeight: 24,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    opacity: 0.6,
+    textAlign: 'center',
+    marginTop: 20,
   },
   submitButton: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 18,
+    paddingVertical: 20,
     borderRadius: 30,
-    marginTop: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -273,19 +151,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#071E35',
     textAlign: 'center',
-  },
-  toggleButton: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  toggleButtonText: {
-    fontSize: 15,
-    color: '#FFFFFF',
-    opacity: 0.8,
-  },
-  toggleButtonTextBold: {
-    fontWeight: '700',
-    opacity: 1,
   },
   skipButton: {
     marginTop: 30,

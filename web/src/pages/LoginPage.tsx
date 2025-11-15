@@ -1,37 +1,39 @@
-import { useState, FormEvent } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
-import { useMockAuth } from '../components/auth/MockAuthProvider';
-import { Input } from '../components/ui/Input';
+import { useAuth0 } from '@auth0/auth0-react';
 
 export default function LoginPage() {
-  const { isAuthenticated, loginWithCredentials } = useMockAuth();
+  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  if (isAuthenticated) {
-    navigate('/dashboard');
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
+
+  const handleLogin = () => {
+    loginWithRedirect({
+      appState: {
+        returnTo: '/dashboard',
+      },
+    });
+  };
+
+  const handleSignup = () => {
+    loginWithRedirect({
+      authorizationParams: {
+        screen_hint: 'signup',
+      },
+      appState: {
+        returnTo: '/dashboard',
+      },
+    });
+  };
+
+  if (isLoading || isAuthenticated) {
     return null;
   }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      await loginWithCredentials(email, password);
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen w-full relative overflow-hidden" style={{ backgroundColor: '#2B3A67' }}>
@@ -56,81 +58,28 @@ export default function LoginPage() {
               <p className="text-sm text-white">City Officials Dashboard - Secure Login</p>
             </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="mb-6 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-white text-sm">
-                {error}
-              </div>
-            )}
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Email */}
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-white">
-                  Username
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="bg-white/95 text-gray-900 placeholder:text-gray-500"
-                />
-              </div>
-
-              {/* Password */}
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium text-white">
-                  Password
-                </label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="bg-white/95 pr-12 text-gray-900 placeholder:text-gray-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Remember me & Forgot password */}
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  <span className="text-sm text-white">Remember me</span>
-                </label>
-                <button type="button" className="text-sm text-black hover:text-gray-700">
-                  Forgot password?
-                </button>
-              </div>
-
-              {/* Submit */}
+            {/* Auth0 Buttons */}
+            <div className="space-y-4">
               <button
-                type="submit"
-                disabled={loading}
+                onClick={handleLogin}
+                disabled={isLoading}
                 className="w-full px-6 py-3 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Logging in...' : 'Log In'}
+                {isLoading ? 'Redirecting...' : 'Log In with Auth0'}
               </button>
-            </form>
+
+              <button
+                onClick={handleSignup}
+                disabled={isLoading}
+                className="w-full px-6 py-3 bg-white/10 backdrop-blur-sm text-white border border-white/20 rounded-lg font-medium hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Redirecting...' : 'Sign Up'}
+              </button>
+
+              <p className="text-xs text-white/70 text-center mt-4">
+                Secure authentication powered by Auth0
+              </p>
+            </div>
           </div>
         </div>
       </div>

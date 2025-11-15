@@ -5,6 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "scheme": "roadsense",
     "splash": {
       "backgroundColor": "#2563eb"
     },
@@ -29,7 +30,8 @@
           "locationAlwaysAndWhenInUsePermission": "Allow RoadSense to use your location to detect potholes."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-web-browser"
     ]
   }
 }

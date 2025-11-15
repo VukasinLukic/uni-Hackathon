@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import { Auth0Provider } from './src/contexts/Auth0Context';
 
 // Keep splash screen visible while loading fonts
 SplashScreen.preventAutoHideAsync();
@@ -19,6 +20,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import HomeScreenLegacy from './src/screens/HomeScreenLegacy';
 import TestBackendScreen from './src/screens/TestBackendScreen';
 import ViewGraphsScreen from './src/screens/ViewGraphsScreen';
+import { ProfileScreen } from './src/screens/ProfileScreen';
 
 // Lazy import screens that use LocationService to prevent early permission requests
 let DrivingModeScreen: any = null;
@@ -36,7 +38,8 @@ type Screen =
   | 'walking'
   | 'testMode'
   | 'testBackend'
-  | 'viewGraphs';
+  | 'viewGraphs'
+  | 'profile';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
@@ -117,8 +120,12 @@ export default function App() {
           <HomeScreen
             onDrivingMode={() => setCurrentScreen('driving')}
             onWalkingMode={() => setCurrentScreen('walking')}
+            onProfile={() => setCurrentScreen('profile')}
           />
         );
+
+      case 'profile':
+        return <ProfileScreen onBack={() => setCurrentScreen('home')} />;
 
       case 'legacyDemo':
         return (
@@ -190,9 +197,11 @@ export default function App() {
   };
 
   return (
-    <SafeAreaProvider>
-      <View style={styles.container}>{renderScreen()}</View>
-    </SafeAreaProvider>
+    <Auth0Provider>
+      <SafeAreaProvider>
+        <View style={styles.container}>{renderScreen()}</View>
+      </SafeAreaProvider>
+    </Auth0Provider>
   );
 }
 

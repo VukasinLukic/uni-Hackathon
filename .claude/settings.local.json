@@ -35,7 +35,8 @@
       "Bash(npx expo install:*)",
       "Bash(FogOfWarMap.tsx)",
       "Bash(npx expo start)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(where:*)"
     ],
     "deny": [],
     "ask": []

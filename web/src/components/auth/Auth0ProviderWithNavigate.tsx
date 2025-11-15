@@ -13,11 +13,11 @@ export default function Auth0ProviderWithNavigate({
 
   const domain = import.meta.env.VITE_AUTH0_DOMAIN;
   const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
-  const redirectUri = window.location.origin;
+  const redirectUri = `${window.location.origin}/dashboard`;
   const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
 
   const onRedirectCallback = (appState?: AppState) => {
-    navigate(appState?.returnTo || window.location.pathname);
+    navigate(appState?.returnTo || '/dashboard');
   };
 
   if (!domain || !clientId) {
@@ -48,9 +48,9 @@ export default function Auth0ProviderWithNavigate({
       clientId={clientId}
       authorizationParams={{
         redirect_uri: redirectUri,
-        ...(audience && { audience }),
       }}
       onRedirectCallback={onRedirectCallback}
+      cacheLocation="localstorage"
     >
       {children}
     </Auth0Provider>

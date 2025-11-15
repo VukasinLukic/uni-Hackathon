@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
@@ -12,9 +12,10 @@ import { FONTS } from '../utils/typography';
 interface HomeScreenProps {
   onDrivingMode: () => void;
   onWalkingMode: () => void;
+  onProfile?: () => void;
 }
 
-export default function HomeScreen({ onDrivingMode, onWalkingMode }: HomeScreenProps) {
+export default function HomeScreen({ onDrivingMode, onWalkingMode, onProfile }: HomeScreenProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [exploredCells, setExploredCells] = useState<ExplorationCell[]>([]);
   const [todayStats, setTodayStats] = useState({
@@ -67,7 +68,11 @@ export default function HomeScreen({ onDrivingMode, onWalkingMode }: HomeScreenP
 
       {/* Top Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
+        <TouchableOpacity
+          style={styles.headerLeft}
+          onPress={onProfile}
+          activeOpacity={0.7}
+        >
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>P</Text>
           </View>
@@ -77,7 +82,7 @@ export default function HomeScreen({ onDrivingMode, onWalkingMode }: HomeScreenP
               <View style={[styles.xpProgress, { width: '30%' }]} />
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
         <View style={styles.headerRight}>
           <Text style={styles.xpText}>150 / 500 XP</Text>
         </View>

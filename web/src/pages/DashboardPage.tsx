@@ -1,8 +1,8 @@
 import AppLayout from '../components/Layout/AppLayout';
-import { useMockAuth } from '../components/auth/MockAuthProvider';
+import { useAuth0 } from '@auth0/auth0-react';
 
 export default function DashboardPage() {
-  const { user } = useMockAuth();
+  const { user } = useAuth0();
 
   return (
     <AppLayout>
@@ -12,7 +12,7 @@ export default function DashboardPage() {
             Welcome to Pave Patrol Dashboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Hello, {user?.displayName || user?.email}!
+            Hello, {user?.name || user?.email}!
           </p>
         </div>
 
@@ -21,7 +21,7 @@ export default function DashboardPage() {
             Authentication Successful!
           </h2>
           <p className="text-green-700 dark:text-green-300">
-            Mock login is working perfectly. The dashboard is now protected and only accessible to authenticated users.
+            Auth0 login is working perfectly. The dashboard is now protected and only accessible to authenticated users.
           </p>
         </div>
 
@@ -33,10 +33,10 @@ export default function DashboardPage() {
                 <span className="font-medium text-gray-900 dark:text-white">Email:</span> {user?.email}
               </p>
               <p className="text-gray-600 dark:text-gray-400">
-                <span className="font-medium text-gray-900 dark:text-white">Name:</span> {user?.displayName}
+                <span className="font-medium text-gray-900 dark:text-white">Name:</span> {user?.name}
               </p>
               <p className="text-gray-600 dark:text-gray-400">
-                <span className="font-medium text-gray-900 dark:text-white">Role:</span> {user?.role}
+                <span className="font-medium text-gray-900 dark:text-white">Auth Provider:</span> Auth0
               </p>
             </div>
           </div>
@@ -44,7 +44,7 @@ export default function DashboardPage() {
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Next Steps</h3>
             <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <li>- Mock auth integration complete</li>
+              <li>- Auth0 integration complete</li>
               <li>- Implement Mapbox integration</li>
               <li>- Build analytics dashboard</li>
               <li>- Add AI chatbot interface</li>

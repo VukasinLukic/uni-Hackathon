@@ -35,6 +35,7 @@ import explorationRoutes from './routes/exploration.routes';
 import driveRoutes from './routes/drive.routes';
 import aiMissionRoutes from './routes/aiMission.routes';
 import geminiChatRoutes from './routes/geminiChat.routes';
+import userRoutes from './routes/user.routes';
 
 // Auth routes (public)
 app.use('/api/auth', authRoutes);
@@ -52,6 +53,7 @@ app.use('/api/exploration', explorationRoutes);
 app.use('/api/drives', driveRoutes);
 app.use('/api/ai-mission', aiMissionRoutes);
 app.use('/api/gemini-chat', geminiChatRoutes);
+app.use('/api/users', userRoutes); // Auth0-protected user profile routes
 
 // Error handling
 app.use(

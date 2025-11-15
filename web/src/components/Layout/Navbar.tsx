@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Menu, Search, Bell, User, LogOut, Sun, Moon } from 'lucide-react';
-import { useMockAuth } from '../auth/MockAuthProvider';
+import { useAuth0 } from '@auth0/auth0-react';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
 }
 
 export default function Navbar({ onToggleSidebar }: NavbarProps) {
-  const { user, logout } = useMockAuth();
+  const { user, logout } = useAuth0();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -73,7 +73,7 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
               <User className="w-4 h-4 text-white" />
             </div>
             <span className="hidden md:block text-sm font-medium text-gray-700 dark:text-gray-300">
-              {user?.displayName || 'Admin'}
+              {user?.name || user?.email || 'Admin'}
             </span>
           </button>
 
@@ -81,12 +81,12 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
           {userMenuOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
               <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.displayName}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
               </div>
               <button
                 onClick={() => {
-                  logout();
+                  logout({ logoutParams: { returnTo: window.location.origin } });
                   setUserMenuOpen(false);
                 }}
                 className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"

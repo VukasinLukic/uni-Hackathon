@@ -28,6 +28,16 @@ export const authService = {
     await client.loginWithRedirect();
   },
 
+  // Sign up with redirect
+  async signupWithRedirect() {
+    const client = await getAuth0Client();
+    await client.loginWithRedirect({
+      authorizationParams: {
+        screen_hint: 'signup',
+      },
+    });
+  },
+
   // Handle redirect callback
   async handleRedirectCallback() {
     const client = await getAuth0Client();
