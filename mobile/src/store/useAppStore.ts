@@ -7,19 +7,22 @@ interface User {
   level: number;
   xp: number;
   totalDistance: number;
-  potholesDetected: number;
+  discoveryMoments: number; // Changed from potholesDetected
+  cellsExplored: number;
 }
 
 interface DriveState {
   isActive: boolean;
   startTime: number | null;
-  detectedPotholes: number;
+  detectedActivities: number; // Changed from detectedPotholes
   distance: number;
+  newCellsExplored: number;
 }
 
 interface MapState {
   exploredCells: Set<string>;
-  nearbyPotholes: any[];
+  nearbyActivityAreas: any[]; // Changed from nearbyPotholes
+  discoveryMarkers: any[]; // New: points of interest
 }
 
 interface ConnectivityState {
@@ -40,13 +43,15 @@ interface AppStore {
   drive: DriveState;
   startDrive: () => void;
   stopDrive: () => void;
-  incrementDetectedPotholes: () => void;
+  incrementDetectedActivities: () => void; // Renamed from incrementDetectedPotholes
+  incrementNewCellsExplored: () => void; // New
   updateDistance: (distance: number) => void;
 
   // Map state
   map: MapState;
   addExploredCell: (cellId: string) => void;
-  setNearbyPotholes: (potholes: any[]) => void;
+  setNearbyActivityAreas: (areas: any[]) => void; // Renamed from setNearbyPotholes
+  addDiscoveryMarker: (marker: any) => void; // New
 
   // Connectivity state
   connectivity: ConnectivityState;
@@ -66,12 +71,14 @@ const initialState = {
   drive: {
     isActive: false,
     startTime: null,
-    detectedPotholes: 0,
+    detectedActivities: 0,
     distance: 0,
+    newCellsExplored: 0,
   },
   map: {
     exploredCells: new Set<string>(),
-    nearbyPotholes: [],
+    nearbyActivityAreas: [],
+    discoveryMarkers: [],
   },
   connectivity: {
     isBackendAvailable: false,
@@ -95,8 +102,9 @@ export const useAppStore = create<AppStore>((set) => ({
         ...state.drive,
         isActive: true,
         startTime: Date.now(),
-        detectedPotholes: 0,
+        detectedActivities: 0,
         distance: 0,
+        newCellsExplored: 0,
       },
     })),
 
@@ -108,11 +116,19 @@ export const useAppStore = create<AppStore>((set) => ({
       },
     })),
 
-  incrementDetectedPotholes: () =>
+  incrementDetectedActivities: () =>
     set((state) => ({
       drive: {
         ...state.drive,
-        detectedPotholes: state.drive.detectedPotholes + 1,
+        detectedActivities: state.drive.detectedActivities + 1,
+      },
+    })),
+
+  incrementNewCellsExplored: () =>
+    set((state) => ({
+      drive: {
+        ...state.drive,
+        newCellsExplored: state.drive.newCellsExplored + 1,
       },
     })),
 
@@ -133,11 +149,19 @@ export const useAppStore = create<AppStore>((set) => ({
       },
     })),
 
-  setNearbyPotholes: (potholes) =>
+  setNearbyActivityAreas: (areas) =>
     set((state) => ({
       map: {
         ...state.map,
-        nearbyPotholes: potholes,
+        nearbyActivityAreas: areas,
+      },
+    })),
+
+  addDiscoveryMarker: (marker) =>
+    set((state) => ({
+      map: {
+        ...state.map,
+        discoveryMarkers: [...state.map.discoveryMarkers, marker],
       },
     })),
 

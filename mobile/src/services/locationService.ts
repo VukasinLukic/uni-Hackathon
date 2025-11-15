@@ -6,14 +6,19 @@ export class LocationService {
   private currentSpeed: number = 0; // km/h
 
   async requestPermissions(): Promise<boolean> {
-    const { status } = await Location.requestForegroundPermissionsAsync();
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
-    if (status !== 'granted') {
-      console.error('Location permission denied');
+      if (status !== 'granted') {
+        console.error('Location permission denied');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Location permission error:', error);
       return false;
     }
-
-    return true;
   }
 
   async startTracking(callback: (location: Location.LocationObject) => void) {

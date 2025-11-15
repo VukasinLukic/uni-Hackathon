@@ -1,15 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Onboarding Screens
+import WelcomeScreen from './src/screens/onboarding/WelcomeScreen';
+import FeaturesScreen from './src/screens/onboarding/FeaturesScreen';
+import AuthScreen from './src/screens/onboarding/AuthScreen';
+import PermissionsScreen from './src/screens/onboarding/PermissionsScreen';
+
+// Main App Screens (lazy loaded to avoid permission requests before onboarding)
 import HomeScreen from './src/screens/HomeScreen';
 import HomeScreenLegacy from './src/screens/HomeScreenLegacy';
-import DrivingModeScreen from './src/screens/DrivingModeScreen';
-import WalkingModeScreen from './src/screens/WalkingModeScreen';
-import TestModeScreen from './src/screens/TestModeScreen';
 import TestBackendScreen from './src/screens/TestBackendScreen';
 import ViewGraphsScreen from './src/screens/ViewGraphsScreen';
 
+// Lazy import screens that use LocationService to prevent early permission requests
+let DrivingModeScreen: any = null;
+let WalkingModeScreen: any = null;
+let TestModeScreen: any = null;
+
 type Screen =
+  | 'welcome'
+  | 'features'
+  | 'auth'
+  | 'permissions'
   | 'home'
   | 'legacyDemo'
   | 'driving'
@@ -19,10 +34,62 @@ type Screen =
   | 'viewGraphs';
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('home');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+
+  // Check if user has completed onboarding
+  useEffect(() => {
+    checkOnboardingStatus();
+  }, []);
+
+  const checkOnboardingStatus = async () => {
+    try {
+      const completed = await AsyncStorage.getItem('@onboarding_completed');
+      if (completed === 'true') {
+        setHasCompletedOnboarding(true);
+        setCurrentScreen('home');
+      }
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+    }
+  };
+
+  const completeOnboarding = async () => {
+    try {
+      await AsyncStorage.setItem('@onboarding_completed', 'true');
+      setHasCompletedOnboarding(true);
+      setCurrentScreen('home');
+    } catch (error) {
+      console.error('Error saving onboarding status:', error);
+    }
+  };
 
   const renderScreen = () => {
     switch (currentScreen) {
+      // Onboarding Screens
+      case 'welcome':
+        return <WelcomeScreen onGetStarted={() => setCurrentScreen('features')} />;
+
+      case 'features':
+        return (
+          <FeaturesScreen
+            onNext={() => setCurrentScreen('auth')}
+            onSkip={() => setCurrentScreen('auth')}
+          />
+        );
+
+      case 'auth':
+        return (
+          <AuthScreen
+            onAuthComplete={() => setCurrentScreen('permissions')}
+            onSkip={() => setCurrentScreen('permissions')}
+          />
+        );
+
+      case 'permissions':
+        return <PermissionsScreen onComplete={completeOnboarding} />;
+
+      // Main App Screens
       case 'home':
         return (
           <HomeScreen
@@ -40,6 +107,10 @@ export default function App() {
         );
 
       case 'driving':
+        // Lazy load DrivingModeScreen only when needed
+        if (!DrivingModeScreen) {
+          DrivingModeScreen = require('./src/screens/DrivingModeScreen').default;
+        }
         return (
           <DrivingModeScreen
             onBack={() => setCurrentScreen('home')}
@@ -51,6 +122,10 @@ export default function App() {
         );
 
       case 'walking':
+        // Lazy load WalkingModeScreen only when needed
+        if (!WalkingModeScreen) {
+          WalkingModeScreen = require('./src/screens/WalkingModeScreen').default;
+        }
         return (
           <WalkingModeScreen
             onBack={() => setCurrentScreen('home')}
@@ -58,6 +133,10 @@ export default function App() {
         );
 
       case 'testMode':
+        // Lazy load TestModeScreen only when needed
+        if (!TestModeScreen) {
+          TestModeScreen = require('./src/screens/TestModeScreen').default;
+        }
         return (
           <TestModeScreen
             onBack={() => setCurrentScreen('driving')}
