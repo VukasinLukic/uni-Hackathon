@@ -95,25 +95,27 @@ You are a smart assistant that helps city officials and repair teams understand 
 Now answer the user's question based on this real-time data.
 `;
 
-    // Build conversation history
-    const conversationHistory = history.map((msg) => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }],
-    }));
-
-    // Initialize the model with context
+    // Initialize the model (use simple text generation, not chat)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
-      systemInstruction: databaseContext,
+      model: 'gemini-pro',
     });
 
-    // Start chat with history
-    const chat = model.startChat({
-      history: conversationHistory as any,
-    });
+    // Build full prompt with context, history, and current message
+    let fullPrompt = databaseContext;
 
-    // Send user message
-    const result = await chat.sendMessage(message);
+    // Add conversation history if exists
+    if (history.length > 0) {
+      fullPrompt += '\n\n**Previous Conversation:**\n';
+      history.forEach((msg) => {
+        fullPrompt += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+      });
+    }
+
+    // Add current user question
+    fullPrompt += `\n\n**Current User Question:** ${message}\n\n**Your Response:**`;
+
+    // Generate response
+    const result = await model.generateContent(fullPrompt);
     const responseText = result.response.text();
 
     res.json({
