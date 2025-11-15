@@ -4,9 +4,10 @@ import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native
 interface HomeActionButtonProps {
   onDrivingMode: () => void;
   onWalkingMode: () => void;
+  onResetOnboarding?: () => void;
 }
 
-export default function HomeActionButton({ onDrivingMode, onWalkingMode }: HomeActionButtonProps) {
+export default function HomeActionButton({ onDrivingMode, onWalkingMode, onResetOnboarding }: HomeActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [animation] = useState(new Animated.Value(0));
 
@@ -36,7 +37,7 @@ export default function HomeActionButton({ onDrivingMode, onWalkingMode }: HomeA
 
   const menuHeight = animation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 140],
+    outputRange: [0, onResetOnboarding ? 210 : 140],
   });
 
   const rotation = animation.interpolate({
@@ -59,7 +60,7 @@ export default function HomeActionButton({ onDrivingMode, onWalkingMode }: HomeA
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.menuItem, styles.menuItemLast]}
+          style={styles.menuItem}
           onPress={() => handleAction(onWalkingMode)}
         >
           <View style={styles.menuIconContainer}>
@@ -67,6 +68,18 @@ export default function HomeActionButton({ onDrivingMode, onWalkingMode }: HomeA
           </View>
           <Text style={styles.menuText}>Walking Mode</Text>
         </TouchableOpacity>
+
+        {onResetOnboarding && (
+          <TouchableOpacity
+            style={[styles.menuItem, styles.menuItemLast]}
+            onPress={() => handleAction(onResetOnboarding)}
+          >
+            <View style={[styles.menuIconContainer, { backgroundColor: '#FFF3E0' }]}>
+              <Text style={styles.menuIcon}>🔄</Text>
+            </View>
+            <Text style={styles.menuText}>Reset Onboarding</Text>
+          </TouchableOpacity>
+        )}
       </Animated.View>
 
       {/* Main Action Button */}
@@ -132,23 +145,23 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   actionButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#000000',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
   },
   actionButtonOpen: {
     backgroundColor: '#007AFF',
   },
   actionButtonText: {
-    fontSize: 32,
+    fontSize: 24,
     color: '#ffffff',
     fontWeight: '300',
   },

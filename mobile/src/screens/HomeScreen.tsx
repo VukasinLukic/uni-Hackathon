@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeActionButton from '../components/HomeActionButton';
 
 interface HomeScreenProps {
@@ -9,21 +10,18 @@ interface HomeScreenProps {
 }
 
 export default function HomeScreen({ onDrivingMode, onWalkingMode }: HomeScreenProps) {
+  const resetOnboarding = async () => {
+    await AsyncStorage.removeItem('@onboarding_completed');
+    alert('Onboarding reset! Restart app (press R) to see Welcome screen.');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.content}>
-        {/* Logo Placeholder */}
+        {/* Main content area - clean minimal design */}
         <View style={styles.logoContainer}>
-          <View style={styles.logoPlaceholder}>
-            <Text style={styles.logoText}>PAVЕPATROL</Text>
-            <Text style={styles.logoSubtext}>Road Quality Mapping</Text>
-          </View>
-        </View>
-
-        {/* Tagline */}
-        <View style={styles.taglineContainer}>
           <Text style={styles.tagline}>Explore. Detect. Earn.</Text>
           <Text style={styles.description}>
             Turn every drive into an adventure
@@ -41,6 +39,7 @@ export default function HomeScreen({ onDrivingMode, onWalkingMode }: HomeScreenP
       <HomeActionButton
         onDrivingMode={onDrivingMode}
         onWalkingMode={onWalkingMode}
+        onResetOnboarding={resetOnboarding}
       />
     </SafeAreaView>
   );
@@ -60,28 +59,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  logoPlaceholder: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  logoText: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: -2,
-    marginBottom: 8,
-  },
-  logoSubtext: {
-    fontSize: 17,
-    fontWeight: '500',
-    color: '#8e8e93',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-  },
-  taglineContainer: {
-    alignItems: 'center',
-    paddingVertical: 32,
   },
   tagline: {
     fontSize: 28,
