@@ -1,25 +1,33 @@
-export interface Location {
-  lat: number;
-  lng: number;
-  address?: string;
-}
-
 export interface Pothole {
   _id: string;
-  location: Location;
-  severity: number; // 1-10 scale
-  status: 'reported' | 'verified' | 'in-progress' | 'fixed';
+  location: {
+    type: 'Point';
+    coordinates: [number, number]; // [lng, lat] - GeoJSON format
+    address?: string;
+  };
+  severity: number; // 0-100 scale (backend format)
+  status: 'new' | 'planned' | 'in_progress' | 'resolved' | 'rejected';
   reports: number;
-  description?: string;
-  imageUrl?: string;
+  uniqueUsers: string[];
+  impactData: {
+    avgMagnitude: number;
+    maxMagnitude: number;
+    count: number;
+  };
+  photo?: string;
+  aiValidated: boolean;
+  aiConfidence?: number;
+  notes?: string;
+  firstReported: string;
+  lastReported: string;
+  resolvedAt?: string;
   createdAt: string;
   updatedAt: string;
-  assignedTo?: string;
 }
 
 export interface PotholeFilters {
   severity: 'all' | 'low' | 'medium' | 'high';
-  status: 'all' | 'reported' | 'verified' | 'in-progress' | 'fixed';
+  status: 'all' | 'new' | 'planned' | 'in_progress' | 'resolved' | 'rejected';
   timeframe: 'all' | 'today' | 'week' | 'month';
 }
 

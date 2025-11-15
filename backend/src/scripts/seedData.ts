@@ -7,14 +7,14 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-// Belgrade area coordinates (roughly)
-const BELGRADE_CENTER = { lat: 44.8125, lng: 20.4612 };
-const RADIUS = 0.1; // ~10km radius
+// Timișoara area coordinates (Romania)
+const TIMISOARA_CENTER = { lat: 45.7489, lng: 21.2257 };
+const RADIUS = 0.05; // ~5km radius for better clustering in city
 
-// Generate random coordinate near Belgrade
+// Generate random coordinate near Timișoara
 function randomCoordinate() {
-  const lat = BELGRADE_CENTER.lat + (Math.random() - 0.5) * RADIUS;
-  const lng = BELGRADE_CENTER.lng + (Math.random() - 0.5) * RADIUS;
+  const lat = TIMISOARA_CENTER.lat + (Math.random() - 0.5) * RADIUS;
+  const lng = TIMISOARA_CENTER.lng + (Math.random() - 0.5) * RADIUS;
   return [lng, lat]; // GeoJSON format: [longitude, latitude]
 }
 

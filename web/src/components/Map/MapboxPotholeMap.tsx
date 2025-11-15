@@ -1,22 +1,10 @@
 import { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-
-interface PotholeData {
-  _id: string;
-  location: {
-    lat: number;
-    lng: number;
-    address?: string;
-  };
-  severity: number;
-  status: string;
-  reports: number;
-  description?: string;
-}
+import { Pothole } from '../../types/pothole.types';
 
 interface MapboxPotholeMapProps {
-  potholes: PotholeData[];
+  potholes: Pothole[];
   onPotholeSelect?: (potholeId: string) => void;
   viewMode?: 'markers' | 'heatmap';
 }
@@ -59,23 +47,21 @@ export default function MapboxPotholeMap({
 
       if (!map.current) return;
 
-      // Convert potholes to GeoJSON
+      // Convert potholes to GeoJSON (backend already has GeoJSON format!)
       const geojson: GeoJSON.FeatureCollection = {
         type: 'FeatureCollection',
         features: potholes.map((pothole) => ({
           type: 'Feature',
           properties: {
             id: pothole._id,
-            severity: pothole.severity,
+            severity: pothole.severity, // 0-100 scale from backend
             status: pothole.status,
             reports: pothole.reports,
-            description: pothole.description || '',
+            description: pothole.notes || '',
             address: pothole.location.address || '',
+            impactData: pothole.impactData,
           },
-          geometry: {
-            type: 'Point',
-            coordinates: [pothole.location.lng, pothole.location.lat],
-          },
+          geometry: pothole.location, // Already in GeoJSON format { type: 'Point', coordinates: [lng, lat] }
         })),
       };
 

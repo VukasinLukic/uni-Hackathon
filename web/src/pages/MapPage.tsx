@@ -5,15 +5,16 @@ import { usePotholeStore } from '../store/usePotholeStore';
 import { Construction, Flame } from 'lucide-react';
 
 export default function MapPage() {
-  const { loadMockData, viewMode, setViewMode, getFilteredPotholes } = usePotholeStore();
+  const { loadPotholesFromAPI, viewMode, setViewMode, getFilteredPotholes } = usePotholeStore();
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!loaded) {
-      loadMockData();
+      console.log('🔄 MapPage: Loading potholes from API...');
+      loadPotholesFromAPI();
       setLoaded(true);
     }
-  }, [loadMockData, loaded]);
+  }, [loadPotholesFromAPI, loaded]);
 
   const filteredPotholes = getFilteredPotholes();
 
