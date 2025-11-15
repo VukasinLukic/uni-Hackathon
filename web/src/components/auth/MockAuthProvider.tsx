@@ -24,12 +24,15 @@ export function MockAuthProvider({ children }: MockAuthProviderProps) {
 
   // Check auth status on mount
   useEffect(() => {
+    console.log('[MockAuth] Checking authentication status...');
     const currentUser = mockAuthService.getCurrentUser();
+    console.log('[MockAuth] Current user:', currentUser);
     if (currentUser) {
       setUser(currentUser);
       setIsAuthenticated(true);
     }
     setIsLoading(false);
+    console.log('[MockAuth] Auth check complete. Is authenticated:', !!currentUser);
   }, []);
 
   const loginWithCredentials = async (email: string, password: string) => {
