@@ -27,7 +27,8 @@
       "Bash(dir:*)",
       "Bash(ren HomeScreen.tsx HomeScreenLegacy.tsx)",
       "Bash(npm run diagnose:*)",
-      "Bash(npm run create-indexes:*)"
+      "Bash(npm run create-indexes:*)",
+      "Bash(taskkill //F //PID 19544)"
     ],
     "deny": [],
     "ask": []
