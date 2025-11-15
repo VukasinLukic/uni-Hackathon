@@ -12,10 +12,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.roadsense.mobile",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "RoadSense needs your location to detect potholes while you drive.",
-        "NSLocationAlwaysUsageDescription": "RoadSense needs background location to continue detecting potholes.",
-        "NSMotionUsageDescription": "RoadSense uses motion sensors to detect potholes from vibrations.",
-        "NSCameraUsageDescription": "RoadSense needs camera access to photograph potholes."
+        "NSLocationWhenInUseUsageDescription": "PavePatrol needs your location to detect potholes while you drive.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "PavePatrol needs background location to continue detecting potholes even when the app is in background.",
+        "NSLocationAlwaysUsageDescription": "PavePatrol needs background location to continue detecting potholes.",
+        "NSMotionUsageDescription": "PavePatrol uses motion sensors to detect potholes from vibrations.",
+        "NSCameraUsageDescription": "PavePatrol needs camera access to photograph potholes in Walking Mode."
       }
     },
     "android": {

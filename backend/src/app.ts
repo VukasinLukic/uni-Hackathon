@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-// import { checkJwt } from './config/auth0';
 
 const app = express();
 
@@ -22,35 +21,8 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
 
-// ============================================
-// MOCK AUTH MIDDLEWARE (Development Only)
-// ============================================
-// TODO: Remove this and uncomment checkJwt when Auth0 is configured
-// This middleware simulates an authenticated user for testing
-app.use('/api', (req, res, next) => {
-  // Mock authenticated user
-  (req as any).auth = {
-    sub: 'mock-user-id-12345', // User ID
-    email: 'test@roadsense.com',
-  };
-  (req as any).user = {
-    auth0Id: 'mock-user-id-12345',
-    email: 'test@roadsense.com',
-    name: 'Test User',
-    role: 'driver', // Can be: 'driver', 'official', 'admin'
-  };
-  next();
-});
-
-// ============================================
-// TO ENABLE REAL AUTH:
-// 1. Setup Auth0: https://auth0.com
-// 2. Add credentials to .env (AUTH0_DOMAIN, AUTH0_AUDIENCE)
-// 3. Uncomment line 3: import { checkJwt } from './config/auth0';
-// 4. Replace lines 23-36 with: app.use('/api', checkJwt);
-// ============================================
-
 // Import routes
+import authRoutes from './routes/auth.routes';
 import eventRoutes from './routes/events.routes';
 import potholeRoutes from './routes/potholes.routes';
 import uploadRoutes from './routes/upload.routes';
@@ -60,6 +32,10 @@ import chatRoutes from './routes/chat.routes';
 import aiMissionRoutes from './routes/aiMission.routes';
 import geminiChatRoutes from './routes/geminiChat.routes';
 
+// Auth routes (public)
+app.use('/api/auth', authRoutes);
+
+// Protected routes (will require JWT tokens sent via frontend)
 app.use('/api/events', eventRoutes);
 app.use('/api/potholes', potholeRoutes);
 app.use('/api/upload', uploadRoutes);

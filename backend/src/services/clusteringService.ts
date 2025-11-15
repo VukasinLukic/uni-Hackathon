@@ -1,7 +1,7 @@
 import { Pothole, IPothole } from '../models/Pothole.model';
 import { IEvent } from '../models/Event.model';
 
-const CLUSTERING_RADIUS = 20; // meters
+const CLUSTERING_RADIUS = 3; // meters
 
 export class ClusteringService {
   /**
