@@ -12,7 +12,9 @@
       "Bash(node dist/server.js:*)",
       "Bash(taskkill //F //PID 26828)",
       "Bash(timeout /t 3 /nobreak)",
-      "Bash(npm run seed:*)"
+      "Bash(npm run seed:*)",
+      "Bash(npm run diagnose:*)",
+      "Bash(npm run create-indexes:*)"
     ],
     "deny": [],
     "ask": []
