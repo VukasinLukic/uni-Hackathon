@@ -29,6 +29,8 @@ import uploadRoutes from './routes/upload.routes';
 import statsRoutes from './routes/stats.routes';
 import routeRoutes from './routes/routes.routes';
 import chatRoutes from './routes/chat.routes';
+import xpRoutes from './routes/xp.routes';
+import achievementRoutes from './routes/achievement.routes';
 
 // Auth routes (public)
 app.use('/api/auth', authRoutes);
@@ -40,6 +42,8 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/routes', routeRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/xp', xpRoutes);
+app.use('/api/achievements', achievementRoutes);
 
 // Error handling
 app.use(
