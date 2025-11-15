@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, StatusBar, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, Alert, ActivityIndicator, TextInput, Modal, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 import Card from '../components/Card';
+import StatusBadge from '../components/StatusBadge';
 import { APIService } from '../services/apiService';
+import { useAppStore } from '../store/useAppStore';
 
 interface TestBackendScreenProps {
   onBack: () => void;
@@ -11,11 +13,18 @@ interface TestBackendScreenProps {
 
 export default function TestBackendScreen({ onBack }: TestBackendScreenProps) {
   const [isTesting, setIsTesting] = useState(false);
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [discoveryProgress, setDiscoveryProgress] = useState({ current: 0, total: 0, url: '' });
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customUrl, setCustomUrl] = useState('');
   const [lastResult, setLastResult] = useState<{
     success: boolean;
     message: string;
     timestamp: string;
   } | null>(null);
+
+  const setBackendAvailable = useAppStore((state) => state.setBackendAvailable);
+  const connectivity = useAppStore((state) => state.connectivity);
 
   const testConnection = async () => {
     setIsTesting(true);
@@ -25,40 +34,133 @@ export default function TestBackendScreen({ onBack }: TestBackendScreenProps) {
       console.log('🧪 Testing backend connection...');
       const isReachable = await APIService.healthCheck();
 
+      // Update global connectivity state
+      setBackendAvailable(isReachable);
+
       if (isReachable) {
         setLastResult({
           success: true,
-          message: 'Backend is reachable!',
+          message: 'Backend is reachable! App will use live data.',
           timestamp,
         });
         Alert.alert(
           '✅ Success!',
-          'Backend is reachable at http://10.0.10.157:5001',
+          `Backend is reachable at ${APIService.getBackendHost()}\n\nThe app will now use live backend data.`,
           [{ text: 'OK' }]
         );
       } else {
         setLastResult({
           success: false,
-          message: 'Backend not reachable',
+          message: 'Backend not reachable. App will use mock data.',
           timestamp,
         });
         Alert.alert(
-          '❌ Connection Failed',
-          'Cannot connect to backend.\n\nCheck:\n• Backend running? (npm run dev)\n• IP correct? (10.0.10.157)\n• Same WiFi network?\n• Port is 5001?',
-          [{ text: 'OK' }]
+          '⚠️ Offline Mode',
+          'Cannot connect to backend.\n\nTry:\n1. Auto-Discovery (searches all IPs)\n2. Enter Custom IP\n3. Continue offline',
+          [
+            { text: 'Auto-Discovery', onPress: autoDiscover },
+            { text: 'Custom IP', onPress: () => setShowCustomInput(true) },
+            { text: 'Stay Offline', style: 'cancel' },
+          ]
         );
       }
     } catch (error: any) {
+      setBackendAvailable(false);
       setLastResult({
         success: false,
-        message: error.message || 'Connection error',
+        message: error.message || 'Connection error. Using mock data.',
         timestamp,
       });
-      Alert.alert(
-        '❌ Error',
-        `Failed to reach backend:\n${error.message}\n\nVerify:\n• Backend running on port 5001\n• Same WiFi network\n• Firewall not blocking`,
-        [{ text: 'OK' }]
-      );
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const autoDiscover = async () => {
+    setIsDiscovering(true);
+    setDiscoveryProgress({ current: 0, total: 0, url: '' });
+
+    try {
+      console.log('🔍 Starting auto-discovery...');
+
+      const discoveredUrl = await APIService.discoverBackend((url, index, total) => {
+        setDiscoveryProgress({ current: index, total, url });
+      });
+
+      if (discoveredUrl) {
+        setBackendAvailable(true);
+        setLastResult({
+          success: true,
+          message: `Auto-discovered: ${discoveredUrl}`,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+        Alert.alert(
+          '✅ Backend Found!',
+          `Successfully connected to:\n${discoveredUrl}\n\nThis URL will be saved for future use.`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        setBackendAvailable(false);
+        setLastResult({
+          success: false,
+          message: 'Auto-discovery failed. No backend found.',
+          timestamp: new Date().toLocaleTimeString(),
+        });
+        Alert.alert(
+          '❌ No Backend Found',
+          'Tried all possible IPs and ports.\n\nOptions:\n• Enter custom IP\n• Start backend server\n• Continue in offline mode',
+          [
+            { text: 'Custom IP', onPress: () => setShowCustomInput(true) },
+            { text: 'OK' },
+          ]
+        );
+      }
+    } catch (error: any) {
+      console.error('Discovery error:', error);
+      Alert.alert('Error', `Discovery failed: ${error.message}`);
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  const testCustomUrl = async () => {
+    if (!customUrl.trim()) {
+      Alert.alert('Error', 'Please enter a URL or IP address');
+      return;
+    }
+
+    setIsTesting(true);
+    setShowCustomInput(false);
+
+    try {
+      const works = await APIService.testCustomUrl(customUrl);
+
+      if (works) {
+        setBackendAvailable(true);
+        setLastResult({
+          success: true,
+          message: `Custom URL works: ${customUrl}`,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+        Alert.alert(
+          '✅ Success!',
+          `Connected to custom URL:\n${customUrl}\n\nThis URL has been saved.`,
+          [{ text: 'OK' }]
+        );
+        setCustomUrl('');
+      } else {
+        setBackendAvailable(false);
+        setLastResult({
+          success: false,
+          message: `Custom URL failed: ${customUrl}`,
+          timestamp: new Date().toLocaleTimeString(),
+        });
+        Alert.alert(
+          '❌ Connection Failed',
+          `Cannot connect to:\n${customUrl}\n\nCheck:\n• Backend is running\n• URL is correct\n• Port is correct`,
+          [{ text: 'Try Again', onPress: () => setShowCustomInput(true) }, { text: 'Cancel' }]
+        );
+      }
     } finally {
       setIsTesting(false);
     }
@@ -68,15 +170,18 @@ export default function TestBackendScreen({ onBack }: TestBackendScreenProps) {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      <View style={styles.content}>
+      <ScrollView style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Button
-            title="← Back"
-            variant="outline"
-            onPress={onBack}
-            style={styles.backButton}
-          />
+          <View style={styles.headerTop}>
+            <Button
+              title="← Back"
+              variant="outline"
+              onPress={onBack}
+              style={styles.backButton}
+            />
+            <StatusBadge size="medium" />
+          </View>
           <Text style={styles.title}>Test Backend</Text>
           <Text style={styles.subtitle}>Check backend connectivity</Text>
         </View>
@@ -95,11 +200,17 @@ export default function TestBackendScreen({ onBack }: TestBackendScreenProps) {
           <Text style={styles.cardTitle}>Server Configuration</Text>
           <View style={styles.row}>
             <Text style={styles.label}>URL:</Text>
-            <Text style={styles.value}>http://10.0.10.157:5001</Text>
+            <Text style={styles.value}>{APIService.getBackendHost()}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Endpoint:</Text>
-            <Text style={styles.value}>/api/health</Text>
+            <Text style={styles.value}>/health</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Mode:</Text>
+            <Text style={[styles.value, connectivity.isBackendAvailable ? styles.online : styles.offline]}>
+              {connectivity.isBackendAvailable ? 'Online (Live Data)' : 'Offline (Mock Data)'}
+            </Text>
           </View>
         </Card>
 
@@ -119,32 +230,119 @@ export default function TestBackendScreen({ onBack }: TestBackendScreenProps) {
           </Card>
         )}
 
-        {/* Test Button */}
+        {/* Auto-Discovery Progress */}
+        {isDiscovering && (
+          <Card style={styles.discoveryCard}>
+            <Text style={styles.discoveryTitle}>🔍 Auto-Discovering Backend...</Text>
+            <Text style={styles.discoveryText}>
+              Testing {discoveryProgress.current} of {discoveryProgress.total}
+            </Text>
+            <Text style={styles.discoveryUrl} numberOfLines={1}>
+              {discoveryProgress.url}
+            </Text>
+            <ActivityIndicator size="large" color="#007AFF" style={styles.discoveryLoader} />
+          </Card>
+        )}
+
+        {/* Test Buttons */}
         <View style={styles.buttonContainer}>
           <Button
             title={isTesting ? 'Testing...' : 'Test Connection'}
             icon={isTesting ? undefined : '🔌'}
             variant="primary"
             onPress={testConnection}
-            disabled={isTesting}
+            disabled={isTesting || isDiscovering}
             style={styles.testButton}
           />
-          {isTesting && <ActivityIndicator size="small" color="#000000" style={styles.loader} />}
+
+          <View style={styles.buttonRow}>
+            <Button
+              title="Auto-Discover"
+              icon="🔍"
+              variant="secondary"
+              onPress={autoDiscover}
+              disabled={isTesting || isDiscovering}
+              style={styles.halfButton}
+            />
+            <Button
+              title="Custom IP"
+              icon="⚙️"
+              variant="outline"
+              onPress={() => setShowCustomInput(true)}
+              disabled={isTesting || isDiscovering}
+              style={styles.halfButton}
+            />
+          </View>
         </View>
 
         {/* Help Section */}
         <Card style={styles.helpCard}>
-          <Text style={styles.helpTitle}>Troubleshooting</Text>
+          <Text style={styles.helpTitle}>About Offline Mode</Text>
           <Text style={styles.helpText}>
-            If connection fails:{'\n\n'}
-            1. Ensure backend is running (npm run dev){'\n'}
-            2. Check IP address is correct{'\n'}
-            3. Verify both devices on same WiFi{'\n'}
-            4. Check firewall settings{'\n'}
-            5. Confirm port 5001 is not blocked
+            The app works in TWO MODES:{'\n\n'}
+            <Text style={styles.bold}>Online Mode (Backend Connected):</Text>{'\n'}
+            • Real-time pothole data{'\n'}
+            • Events saved to database{'\n'}
+            • Live clustering & analysis{'\n\n'}
+            <Text style={styles.bold}>Offline Mode (No Backend):</Text>{'\n'}
+            • Uses mock/cached data{'\n'}
+            • Events stored locally{'\n'}
+            • Full app functionality{'\n\n'}
+            If connection fails:{'\n'}
+            1. Backend running? (npm run dev){'\n'}
+            2. IP correct? ({APIService.getBackendHost()}){'\n'}
+            3. Same WiFi network?{'\n'}
+            4. Firewall blocking port 5001?
           </Text>
         </Card>
-      </View>
+      </ScrollView>
+
+      {/* Custom URL Input Modal */}
+      <Modal visible={showCustomInput} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Enter Backend URL</Text>
+            <Text style={styles.modalSubtitle}>
+              Enter your computer's IP address and port
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="192.168.1.100:5001"
+              value={customUrl}
+              onChangeText={setCustomUrl}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+
+            <Text style={styles.modalHint}>
+              Examples:{'\n'}
+              • 192.168.1.100:5001{'\n'}
+              • 10.0.10.157:5001{'\n'}
+              • http://192.168.1.100:5001
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <Button
+                title="Cancel"
+                variant="outline"
+                onPress={() => {
+                  setShowCustomInput(false);
+                  setCustomUrl('');
+                }}
+                style={styles.modalButton}
+              />
+              <Button
+                title="Test URL"
+                variant="primary"
+                onPress={testCustomUrl}
+                style={styles.modalButton}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -162,11 +360,15 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 24,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   backButton: {
-    alignSelf: 'flex-start',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    marginBottom: 20,
   },
   title: {
     fontSize: 34,
@@ -284,5 +486,98 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#000000',
     lineHeight: 22,
+  },
+  bold: {
+    fontWeight: '600',
+  },
+  online: {
+    color: '#4caf50',
+    fontWeight: '600',
+  },
+  offline: {
+    color: '#ff9800',
+    fontWeight: '600',
+  },
+  discoveryCard: {
+    backgroundColor: '#e3f2fd',
+    marginTop: 24,
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  discoveryTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 12,
+  },
+  discoveryText: {
+    fontSize: 15,
+    color: '#666',
+    marginBottom: 8,
+  },
+  discoveryUrl: {
+    fontSize: 13,
+    color: '#999',
+    fontFamily: 'monospace',
+    marginBottom: 16,
+  },
+  discoveryLoader: {
+    marginTop: 8,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  halfButton: {
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 15,
+    color: '#666',
+    marginBottom: 20,
+  },
+  input: {
+    backgroundColor: '#f5f5f7',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#000000',
+    marginBottom: 16,
+    fontFamily: 'monospace',
+  },
+  modalHint: {
+    fontSize: 13,
+    color: '#999',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
   },
 });
