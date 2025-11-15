@@ -3,7 +3,7 @@ import { MockDataService } from './mockDataService';
 import { BackendDiscovery } from './backendDiscovery';
 
 // Backend API base URL - will be auto-discovered!
-let BACKEND_HOST = 'http://10.0.10.156:5001'; // Default fallback - Vukasin's current IP
+let BACKEND_HOST = 'http://10.0.10.156:7392'; // Default fallback - Vukasin's current IP
 let API_BASE_URL = `${BACKEND_HOST}/api`;
 
 // Backend availability state
@@ -54,8 +54,14 @@ export class APIService {
     // Try to get saved backend URL
     const savedUrl = await BackendDiscovery.getSavedBackendUrl();
     if (savedUrl) {
-      console.log(`💾 Using saved backend URL: ${savedUrl}`);
-      this.setBackendHost(savedUrl);
+      // Check if saved URL is using old port (5001) - clear it!
+      if (savedUrl.includes(':5001')) {
+        console.log('🗑️ Clearing old cached URL with port 5001');
+        await BackendDiscovery.clearSavedUrl();
+      } else {
+        console.log(`💾 Using saved backend URL: ${savedUrl}`);
+        this.setBackendHost(savedUrl);
+      }
     }
 
     // Quick check if it works

@@ -50,7 +50,7 @@ const getIPCandidates = (): string[] => {
 /**
  * Ports to try
  */
-const PORTS = [5001, 5000, 3000, 8080];
+const PORTS = [7392, 5001, 5000, 3000, 8080];
 
 /**
  * Generate all possible backend URLs
@@ -212,12 +212,12 @@ export class BackendDiscovery {
 
     // Try most common patterns quickly - YOUR IP FIRST!
     const quickUrls = [
-      'http://10.0.10.156:5001', // Your current IP - FIRST!
-      'http://10.0.10.157:5001',
-      'http://10.0.10.158:5001',
-      'http://192.168.1.100:5001',
-      'http://192.168.0.100:5001',
-      'http://localhost:5001',
+      'http://10.0.10.156:7392', // Your current IP - FIRST!
+      'http://10.0.10.157:7392',
+      'http://10.0.10.158:7392',
+      'http://192.168.1.100:7392',
+      'http://192.168.0.100:7392',
+      'http://localhost:7392',
     ];
 
     for (const url of quickUrls) {
@@ -256,7 +256,7 @@ export class BackendDiscovery {
   /**
    * Add custom IP to discovery list
    */
-  static addCustomIP(ip: string, port: number = 5001): void {
+  static addCustomIP(ip: string, port: number = 7392): void {
     const url = `http://${ip}:${port}`;
     console.log(`➕ Added custom URL to discovery: ${url}`);
     // The IP will be tried in next discovery
