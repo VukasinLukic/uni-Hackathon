@@ -15,6 +15,7 @@ interface DrivingModeScreenProps {
   onTestMode: () => void;
   onTestBackend: () => void;
   onViewGraphs: () => void;
+  onLegacyDemo?: () => void;
 }
 
 export default function DrivingModeScreen({
@@ -22,6 +23,7 @@ export default function DrivingModeScreen({
   onTestMode,
   onTestBackend,
   onViewGraphs,
+  onLegacyDemo,
 }: DrivingModeScreenProps) {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [speed, setSpeed] = useState(0);
@@ -219,6 +221,7 @@ export default function DrivingModeScreen({
         onTestMode={onTestMode}
         onTestBackend={onTestBackend}
         onViewGraphs={onViewGraphs}
+        onLegacyDemo={onLegacyDemo}
       />
     </SafeAreaView>
   );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
+import HomeScreenLegacy from './src/screens/HomeScreenLegacy';
 import DrivingModeScreen from './src/screens/DrivingModeScreen';
 import WalkingModeScreen from './src/screens/WalkingModeScreen';
 import TestModeScreen from './src/screens/TestModeScreen';
@@ -10,6 +11,7 @@ import ViewGraphsScreen from './src/screens/ViewGraphsScreen';
 
 type Screen =
   | 'home'
+  | 'legacyDemo'
   | 'driving'
   | 'walking'
   | 'testMode'
@@ -29,6 +31,14 @@ export default function App() {
           />
         );
 
+      case 'legacyDemo':
+        return (
+          <HomeScreenLegacy
+            onDrivingMode={() => setCurrentScreen('driving')}
+            onWalkingMode={() => setCurrentScreen('walking')}
+          />
+        );
+
       case 'driving':
         return (
           <DrivingModeScreen
@@ -36,6 +46,7 @@ export default function App() {
             onTestMode={() => setCurrentScreen('testMode')}
             onTestBackend={() => setCurrentScreen('testBackend')}
             onViewGraphs={() => setCurrentScreen('viewGraphs')}
+            onLegacyDemo={() => setCurrentScreen('legacyDemo')}
           />
         );
 

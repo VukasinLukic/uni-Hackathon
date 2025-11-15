@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
 
-interface ActionButtonProps {
-  onTestMode: () => void;
-  onTestBackend: () => void;
-  onViewGraphs: () => void;
-  onLegacyDemo?: () => void;
+interface HomeActionButtonProps {
+  onDrivingMode: () => void;
+  onWalkingMode: () => void;
 }
 
-export default function ActionButton({ onTestMode, onTestBackend, onViewGraphs, onLegacyDemo }: ActionButtonProps) {
+export default function HomeActionButton({ onDrivingMode, onWalkingMode }: HomeActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [animation] = useState(new Animated.Value(0));
 
@@ -19,7 +17,7 @@ export default function ActionButton({ onTestMode, onTestBackend, onViewGraphs, 
       toValue,
       friction: 5,
       tension: 40,
-      useNativeDriver: false, // height animation requires false
+      useNativeDriver: false,
     }).start();
 
     setIsOpen(!isOpen);
@@ -33,13 +31,12 @@ export default function ActionButton({ onTestMode, onTestBackend, onViewGraphs, 
       tension: 40,
       useNativeDriver: false,
     }).start();
-    // Call action immediately
     action();
   };
 
   const menuHeight = animation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, onLegacyDemo ? 270 : 200],
+    outputRange: [0, 140],
   });
 
   const rotation = animation.interpolate({
@@ -49,60 +46,38 @@ export default function ActionButton({ onTestMode, onTestBackend, onViewGraphs, 
 
   return (
     <View style={styles.container}>
-        {/* Menu Items */}
-        <Animated.View style={[styles.menu, { height: menuHeight, opacity: animation }]}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleAction(onTestMode)}
-          >
-            <View style={styles.menuIconContainer}>
-              <Text style={styles.menuIcon}>🧪</Text>
-            </View>
-            <Text style={styles.menuText}>Test Mode</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleAction(onTestBackend)}
-          >
-            <View style={styles.menuIconContainer}>
-              <Text style={styles.menuIcon}>🔌</Text>
-            </View>
-            <Text style={styles.menuText}>Test Backend</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleAction(onViewGraphs)}
-          >
-            <View style={styles.menuIconContainer}>
-              <Text style={styles.menuIcon}>📊</Text>
-            </View>
-            <Text style={styles.menuText}>View Graphs</Text>
-          </TouchableOpacity>
-
-          {onLegacyDemo && (
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => handleAction(onLegacyDemo)}
-            >
-              <View style={styles.menuIconContainer}>
-                <Text style={styles.menuIcon}>🎯</Text>
-              </View>
-              <Text style={styles.menuText}>Legacy Demo</Text>
-            </TouchableOpacity>
-          )}
-        </Animated.View>
-
-        {/* Main Action Button */}
+      {/* Menu Items */}
+      <Animated.View style={[styles.menu, { height: menuHeight, opacity: animation }]}>
         <TouchableOpacity
-          style={[styles.actionButton, isOpen && styles.actionButtonOpen]}
-          onPress={toggleMenu}
+          style={styles.menuItem}
+          onPress={() => handleAction(onDrivingMode)}
         >
-          <Animated.Text style={[styles.actionButtonText, { transform: [{ rotate: rotation }] }]}>
-            +
-          </Animated.Text>
+          <View style={styles.menuIconContainer}>
+            <Text style={styles.menuIcon}>🚗</Text>
+          </View>
+          <Text style={styles.menuText}>Driving Mode</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuItem, styles.menuItemLast]}
+          onPress={() => handleAction(onWalkingMode)}
+        >
+          <View style={styles.menuIconContainer}>
+            <Text style={styles.menuIcon}>🚶</Text>
+          </View>
+          <Text style={styles.menuText}>Walking Mode</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Main Action Button */}
+      <TouchableOpacity
+        style={[styles.actionButton, isOpen && styles.actionButtonOpen]}
+        onPress={toggleMenu}
+      >
+        <Animated.Text style={[styles.actionButtonText, { transform: [{ rotate: rotation }] }]}>
+          +
+        </Animated.Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -125,7 +100,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 8,
-    minWidth: 160,
+    minWidth: 180,
   },
   menuItem: {
     flexDirection: 'row',
@@ -135,6 +110,9 @@ const styles = StyleSheet.create({
     gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f7',
+  },
+  menuItemLast: {
+    borderBottomWidth: 0,
   },
   menuIconContainer: {
     width: 32,

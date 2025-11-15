@@ -22,7 +22,9 @@
       "Bash(npm run lint)",
       "Bash(npm run:*)",
       "Bash(cat:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(dir:*)",
+      "Bash(ren HomeScreen.tsx HomeScreenLegacy.tsx)"
     ],
     "deny": [],
     "ask": []

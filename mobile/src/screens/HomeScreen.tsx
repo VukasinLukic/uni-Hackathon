@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Button from '../components/Button';
+import HomeActionButton from '../components/HomeActionButton';
 
 interface HomeScreenProps {
   onDrivingMode: () => void;
@@ -14,54 +14,20 @@ export default function HomeScreen({ onDrivingMode, onWalkingMode }: HomeScreenP
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>RoadSense</Text>
-          <Text style={styles.subtitle}>Pothole Detection System</Text>
+        {/* Logo Placeholder */}
+        <View style={styles.logoContainer}>
+          <View style={styles.logoPlaceholder}>
+            <Text style={styles.logoText}>PAVЕPATROL</Text>
+            <Text style={styles.logoSubtext}>Road Quality Mapping</Text>
+          </View>
         </View>
 
-        {/* Mode Selection */}
-        <View style={styles.modeContainer}>
-          <Text style={styles.modeTitle}>Choose Mode</Text>
-
-          <View style={styles.buttonGroup}>
-            {/* Driving Mode */}
-            <Button
-              title="Driving Mode"
-              icon="🚗"
-              variant="primary"
-              onPress={onDrivingMode}
-              style={styles.modeButton}
-            />
-
-            {/* Walking Mode */}
-            <Button
-              title="Walking Mode"
-              icon="🚶"
-              variant="secondary"
-              onPress={onWalkingMode}
-              style={styles.modeButton}
-            />
-          </View>
-
-          {/* Info Cards */}
-          <View style={styles.infoContainer}>
-            <View style={styles.infoCard}>
-              <Text style={styles.infoIcon}>🚗</Text>
-              <Text style={styles.infoTitle}>Driving Mode</Text>
-              <Text style={styles.infoText}>
-                Automatic pothole detection using sensors while driving
-              </Text>
-            </View>
-
-            <View style={styles.infoCard}>
-              <Text style={styles.infoIcon}>🚶</Text>
-              <Text style={styles.infoTitle}>Walking Mode</Text>
-              <Text style={styles.infoText}>
-                Manually report potholes by taking photos
-              </Text>
-            </View>
-          </View>
+        {/* Tagline */}
+        <View style={styles.taglineContainer}>
+          <Text style={styles.tagline}>Explore. Detect. Earn.</Text>
+          <Text style={styles.description}>
+            Turn every drive into an adventure
+          </Text>
         </View>
 
         {/* Footer */}
@@ -70,6 +36,12 @@ export default function HomeScreen({ onDrivingMode, onWalkingMode }: HomeScreenP
           <Text style={styles.footerSubtext}>Vukasin • Nemanja • Teodora</Text>
         </View>
       </View>
+
+      {/* Floating Action Button */}
+      <HomeActionButton
+        onDrivingMode={onDrivingMode}
+        onWalkingMode={onWalkingMode}
+      />
     </SafeAreaView>
   );
 }
@@ -82,64 +54,47 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
+    justifyContent: 'space-between',
   },
-  header: {
-    marginTop: 40,
-    marginBottom: 40,
+  logoContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  title: {
-    fontSize: 40,
-    fontWeight: '700',
+  logoPlaceholder: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  logoText: {
+    fontSize: 48,
+    fontWeight: '800',
     color: '#000000',
-    letterSpacing: -1,
+    letterSpacing: -2,
     marginBottom: 8,
   },
-  subtitle: {
+  logoSubtext: {
     fontSize: 17,
+    fontWeight: '500',
     color: '#8e8e93',
-    letterSpacing: -0.4,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
-  modeContainer: {
-    flex: 1,
+  taglineContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
   },
-  modeTitle: {
-    fontSize: 22,
+  tagline: {
+    fontSize: 28,
     fontWeight: '600',
     color: '#000000',
     letterSpacing: -0.5,
-    marginBottom: 24,
+    marginBottom: 12,
   },
-  buttonGroup: {
-    gap: 16,
-    marginBottom: 40,
-  },
-  modeButton: {
-    paddingVertical: 20,
-  },
-  infoContainer: {
-    gap: 16,
-  },
-  infoCard: {
-    backgroundColor: '#f5f5f7',
-    borderRadius: 16,
-    padding: 20,
-  },
-  infoIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  infoTitle: {
+  description: {
     fontSize: 17,
-    fontWeight: '600',
-    color: '#000000',
-    letterSpacing: -0.4,
-    marginBottom: 6,
-  },
-  infoText: {
-    fontSize: 15,
     color: '#8e8e93',
-    lineHeight: 20,
-    letterSpacing: -0.2,
+    letterSpacing: -0.4,
+    textAlign: 'center',
   },
   footer: {
     paddingVertical: 24,
