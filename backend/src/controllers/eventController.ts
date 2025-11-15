@@ -8,7 +8,8 @@ const clusteringService = new ClusteringService();
 
 export const createEvent = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).auth.sub;
+    // Allow anonymous events (no auth required for now)
+    const userId = (req as any).auth?.sub || 'anonymous';
     const eventData = {
       ...req.body,
       userId,
@@ -27,40 +28,60 @@ export const createEvent = async (req: Request, res: Response) => {
     const event = new Event(eventData);
     await event.save();
 
-    // Find or create cluster
-    let cluster = await clusteringService.findNearbyCluster(
-      eventData.location.coordinates
-    );
+    // Find or create cluster (with timeout protection)
+    let cluster: any = null;
+    let severity = 0;
 
-    if (cluster) {
-      // Add to existing cluster
-      cluster = await clusteringService.addEventToCluster(cluster, event);
-      event.clusterId = cluster._id as any;
-      await event.save();
-    } else {
-      // Create new cluster
-      cluster = await clusteringService.createNewCluster(event);
-      event.clusterId = cluster._id as any;
-      await event.save();
+    try {
+      const clusterPromise = clusteringService.findNearbyCluster(
+        eventData.location.coordinates
+      );
+
+      // Add timeout wrapper (10 seconds max)
+      cluster = await Promise.race([
+        clusterPromise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Cluster query timeout')), 10000)
+        )
+      ]) as any;
+
+      if (cluster) {
+        // Add to existing cluster
+        cluster = await clusteringService.addEventToCluster(cluster, event);
+        event.clusterId = cluster._id as any;
+        await event.save();
+      } else {
+        // Create new cluster
+        cluster = await clusteringService.createNewCluster(event);
+        event.clusterId = cluster._id as any;
+        await event.save();
+      }
+
+      // Recalculate severity (in background, don't block)
+      SeverityService.updateSeverity(cluster).then((updatedCluster: any) => {
+        severity = updatedCluster.severity;
+      }).catch(err => {
+        console.error('Severity calc error:', err);
+      });
+    } catch (clusterError: any) {
+      console.error('Clustering error (non-fatal):', clusterError.message);
+      // If clustering fails, still return success (event was saved)
     }
-
-    // Recalculate severity
-    await SeverityService.updateSeverity(cluster);
 
     // Send response IMMEDIATELY (before websocket emit)
     res.status(201).json({
       success: true,
       eventId: event._id,
-      clusterId: cluster._id,
-      severity: cluster.severity,
+      clusterId: cluster?._id || 'pending',
+      severity: cluster?.severity || 0,
     });
 
     // Emit real-time update asynchronously (don't block response)
     setImmediate(() => {
       try {
-        if (cluster.severity > 70) {
+        if (cluster && cluster.severity > 70) {
           emitPotholeUpdate('new_pothole', cluster);
-        } else {
+        } else if (cluster) {
           emitPotholeUpdate('pothole_updated', cluster);
         }
       } catch (error) {

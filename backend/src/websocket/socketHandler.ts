@@ -46,3 +46,35 @@ export const emitPotholeUpdate = (
   const room = 'location_' + Math.floor(lat) + '_' + Math.floor(lng);
   io.to(room).emit('nearby_pothole', pothole);
 };
+
+export const emitLevelUp = (userId: string, levelData: {
+  newLevel: number;
+  currentXP: number;
+  totalXP: number;
+  xpForNextLevel: number;
+}) => {
+  if (!io) return;
+
+  io.emit('level_up', {
+    userId,
+    ...levelData,
+  });
+
+  console.log(`🎉 User ${userId} leveled up to level ${levelData.newLevel}!`);
+};
+
+export const emitAchievementUnlocked = (userId: string, achievement: {
+  title: string;
+  description: string;
+  icon: string;
+  xpReward: number;
+}) => {
+  if (!io) return;
+
+  io.emit('achievement_unlocked', {
+    userId,
+    ...achievement,
+  });
+
+  console.log(`🏆 User ${userId} unlocked achievement: ${achievement.title}`);
+};
