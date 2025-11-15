@@ -12,20 +12,27 @@ export class ClusteringService {
     coordinates: [number, number],
     maxDistance: number = CLUSTERING_RADIUS
   ): Promise<IPothole | null> {
-    const cluster = await Pothole.findOne({
-      location: {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates,
+    try {
+      // Add timeout to geospatial query (max 5 seconds)
+      const cluster = await Pothole.findOne({
+        location: {
+          $near: {
+            $geometry: {
+              type: 'Point',
+              coordinates,
+            },
+            $maxDistance: maxDistance,
           },
-          $maxDistance: maxDistance,
         },
-      },
-      status: { $ne: 'resolved' }, // Don't cluster with resolved potholes
-    });
+        status: { $ne: 'resolved' }, // Don't cluster with resolved potholes
+      }).maxTimeMS(5000); // 5 second timeout for query
 
-    return cluster;
+      return cluster;
+    } catch (error: any) {
+      // If query times out or fails, just create new cluster
+      console.warn('findNearbyCluster error (creating new cluster):', error.message);
+      return null;
+    }
   }
 
   /**

@@ -4,13 +4,17 @@ import cors from 'cors';
 
 const app = express();
 
-// Middleware
-app.use(
-  cors({
-    origin: [process.env.FRONTEND_URL!, process.env.MOBILE_URL!],
-    credentials: true,
-  })
-);
+// Middleware - CORS Configuration
+// In development, allow all origins for Expo Go testing
+// In production, restrict to specific domains
+const corsOptions = {
+  origin: process.env.ALLOW_ALL_ORIGINS === 'true'
+    ? true // Allow all origins (development only!)
+    : [process.env.FRONTEND_URL!, process.env.MOBILE_URL!],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Health check (no auth)

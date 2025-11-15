@@ -39,7 +39,7 @@ export default function Navbar({ onToggleSidebar }: NavbarProps) {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">RoadSense Dashboard</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Pave Patrol Dashboard</h1>
       </div>
 
       {/* Right section */}

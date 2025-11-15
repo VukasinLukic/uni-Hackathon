@@ -1,1231 +1,664 @@
 # 📱 VUKASIN - Mobile App Implementation Plan
 
-**Role**: Mobile Developer - iOS Driver App
-**Tech Stack**: React Native + Expo + TypeScript + Sensors + Auth0 + Mapbox
-**Timeline**: 7 days (phased approach for hackathon)
+**Role**: Mobile Developer - PavePatrol Gamification App
+**Tech Stack**: React Native + Expo + TypeScript + Sensors + Maps + Zustand
+**Timeline**: 7 days (phased approach)
 
 ---
 
 ## 🎯 OVERVIEW
 
-Vukašinova zaduženja:
-- iOS mobilna aplikacija za vozače
-- Automatska detekcija rupa pomoću senzora
-- Real-time upozorenja za vozače
-- Mapa sa vizualizacijom rupa
-- Camera integration za fotografisanje rupa
-- GPS tracking i location services
-- Auth0 authentication
+Mobile app responsibilities for PavePatrol:
+- Onboarding flow (Welcome, Features, Auth, Permissions)
+- Home dashboard with fog of war map
+- Drive mode with auto-detection
+- Walking mode with camera
+- Post-drive summary (XP earned, achievements unlocked)
+- Profile screen (stats, level, XP bar)
+- Achievement grid
+- Leaderboard screen (daily/weekly/monthly/all-time)
+- Rewards marketplace
+- Settings screen
+- Real-time alerts for nearby severe potholes
 
 ---
 
-## 📅 PHASE 1: Setup & Foundation (Day 1-2)
+## 📅 PHASE 1: Navigation & Onboarding (Day 1)
 
-### ✅ Day 1 Morning: Expo Project Setup
+### Day 1 Morning: Setup & Navigation
 
 **Tasks:**
-1. Initialize Expo project
-   ```bash
-   cd mobile
-   npx create-expo-app . --template blank-typescript
+1. Keep existing Expo project structure
+2. Install new dependencies:
+   - React Navigation (stack + bottom tabs)
+   - Zustand (state management)
+   - Axios (API calls)
+   - Socket.IO client
+3. Create navigation structure:
+   - Onboarding stack (Welcome → Features → Auth → Permissions)
+   - Main tab navigator (Home, Profile, Achievements, Leaderboard, Rewards)
+   - Modal screens (Settings, Post-Drive Summary)
+4. Create Zustand store with:
+   - User state (token, profile, level, XP)
+   - Drive state (isActive, startTime, detectedPotholes)
+   - Map state (exploredCells, nearbyPotholes)
 
-   # ili ako praviš od nule:
-   expo init . --template expo-template-blank-typescript
-   ```
-
-2. Install dependencies
-   ```bash
-   # Core
-   npm install expo-sensors expo-location expo-camera
-   npm install @react-navigation/native @react-navigation/stack
-   npm install react-native-maps
-   npm install zustand axios
-   npm install react-native-auth0
-   npm install socket.io-client
-
-   # UI
-   npm install nativewind
-   npm install react-native-safe-area-context
-   npm install react-native-screens
-   npm install expo-av  # za audio alerts
-
-   # Utils
-   npm install date-fns
-   ```
-
-3. Setup NativeWind (Tailwind for RN)
-   ```bash
-   npm install -D tailwindcss
-   npx tailwindcss init
-   ```
-
-   `tailwind.config.js`:
-   ```js
-   module.exports = {
-     content: [
-       "./App.{js,jsx,ts,tsx}",
-       "./src/**/*.{js,jsx,ts,tsx}"
-     ],
-     theme: {
-       extend: {},
-     },
-     plugins: [],
-   }
-   ```
-
-   `babel.config.js`:
-   ```js
-   module.exports = {
-     presets: ['babel-preset-expo'],
-     plugins: ['nativewind/babel'],
-   };
-   ```
-
-4. Create folder structure
-   ```bash
-   mkdir -p src/{screens,components,services,utils,store,navigation,types}
-   ```
-
-**Deliverable**: ✅ Expo project sa Tailwind
+**Deliverable**: Navigation structure + state management
 
 ---
 
-### ✅ Day 1 Afternoon: Navigation & Auth Setup
+### Day 1 Afternoon: Onboarding Flow
 
 **Tasks:**
-1. Setup React Navigation
-   `src/navigation/AppNavigator.tsx`:
-   ```typescript
-   import React from 'react';
-   import { NavigationContainer } from '@react-navigation/native';
-   import { createStackNavigator } from '@react-navigation/stack';
-   import HomeScreen from '../screens/HomeScreen';
-   import DrivingScreen from '../screens/DrivingScreen';
-   import MapScreen from '../screens/MapScreen';
-   import AuthScreen from '../screens/AuthScreen';
+1. Create WelcomeScreen:
+   - Logo animation
+   - App name + tagline: "Explore. Detect. Earn."
+   - "Get Started" button
+2. Create FeaturesScreen:
+   - Carousel with 3 features:
+     - "Auto Detection" - Sensors detect potholes automatically
+     - "Fog of War" - Explore city, reveal roads
+     - "Earn Rewards" - XP, achievements, leaderboards
+   - "Next" button
+3. Create AuthScreen:
+   - Email/password input fields
+   - "Sign Up" and "Login" buttons
+   - Call POST /api/auth/register or /api/auth/login
+   - Store JWT token in AsyncStorage
+   - Save user profile in Zustand
+4. Create PermissionsScreen:
+   - Request Location (foreground + background)
+   - Request Motion sensors
+   - Request Camera
+   - Explain why each is needed
+   - "Allow All" button
 
-   const Stack = createStackNavigator();
-
-   export default function AppNavigator() {
-     return (
-       <NavigationContainer>
-         <Stack.Navigator initialRouteName="Auth">
-           <Stack.Screen
-             name="Auth"
-             component={AuthScreen}
-             options={{ headerShown: false }}
-           />
-           <Stack.Screen name="Home" component={HomeScreen} />
-           <Stack.Screen
-             name="Driving"
-             component={DrivingScreen}
-             options={{ headerShown: false }}
-           />
-           <Stack.Screen name="Map" component={MapScreen} />
-         </Stack.Navigator>
-       </NavigationContainer>
-     );
-   }
-   ```
-
-2. Create Auth0 service
-   `src/services/authService.ts`:
-   ```typescript
-   import Auth0 from 'react-native-auth0';
-
-   const auth0 = new Auth0({
-     domain: process.env.EXPO_PUBLIC_AUTH0_DOMAIN!,
-     clientId: process.env.EXPO_PUBLIC_AUTH0_CLIENT_ID!,
-   });
-
-   export class AuthService {
-     static async login() {
-       try {
-         const credentials = await auth0.webAuth.authorize({
-           scope: 'openid profile email',
-         });
-
-         return {
-           accessToken: credentials.accessToken,
-           idToken: credentials.idToken,
-         };
-       } catch (error) {
-         console.error('Login error:', error);
-         throw error;
-       }
-     }
-
-     static async logout() {
-       try {
-         await auth0.webAuth.clearSession();
-       } catch (error) {
-         console.error('Logout error:', error);
-       }
-     }
-
-     static async getUserInfo(accessToken: string) {
-       try {
-         const user = await auth0.auth.userInfo({ token: accessToken });
-         return user;
-       } catch (error) {
-         console.error('Get user info error:', error);
-         throw error;
-       }
-     }
-   }
-   ```
-
-3. Create Zustand store
-   `src/store/useAppStore.ts`:
-   ```typescript
-   import create from 'zustand';
-
-   interface Pothole {
-     _id: string;
-     location: { lat: number; lng: number };
-     severity: number;
-     status: string;
-   }
-
-   interface TripData {
-     isActive: boolean;
-     startTime: Date | null;
-     detectedPotholes: number;
-   }
-
-   interface AppState {
-     // Auth
-     isAuthenticated: boolean;
-     accessToken: string | null;
-     user: any;
-     setAuth: (token: string, user: any) => void;
-     logout: () => void;
-
-     // Trip
-     trip: TripData;
-     startTrip: () => void;
-     endTrip: () => void;
-     incrementPotholes: () => void;
-
-     // Potholes
-     nearbyPotholes: Pothole[];
-     setNearbyPotholes: (potholes: Pothole[]) => void;
-   }
-
-   export const useAppStore = create<AppState>((set) => ({
-     isAuthenticated: false,
-     accessToken: null,
-     user: null,
-     setAuth: (token, user) => set({ isAuthenticated: true, accessToken: token, user }),
-     logout: () => set({ isAuthenticated: false, accessToken: null, user: null }),
-
-     trip: {
-       isActive: false,
-       startTime: null,
-       detectedPotholes: 0,
-     },
-     startTrip: () => set({
-       trip: {
-         isActive: true,
-         startTime: new Date(),
-         detectedPotholes: 0,
-       },
-     }),
-     endTrip: () => set({
-       trip: {
-         isActive: false,
-         startTime: null,
-         detectedPotholes: 0,
-       },
-     }),
-     incrementPotholes: () => set((state) => ({
-       trip: {
-         ...state.trip,
-         detectedPotholes: state.trip.detectedPotholes + 1,
-       },
-     })),
-
-     nearbyPotholes: [],
-     setNearbyPotholes: (potholes) => set({ nearbyPotholes: potholes }),
-   }));
-   ```
-
-4. Create Auth Screen
-   `src/screens/AuthScreen.tsx`:
-   ```typescript
-   import React from 'react';
-   import { View, Text, TouchableOpacity, Image } from 'react-native';
-   import { AuthService } from '../services/authService';
-   import { useAppStore } from '../store/useAppStore';
-
-   export default function AuthScreen({ navigation }: any) {
-     const setAuth = useAppStore((state) => state.setAuth);
-
-     const handleLogin = async () => {
-       try {
-         const { accessToken, idToken } = await AuthService.login();
-         const user = await AuthService.getUserInfo(accessToken);
-
-         setAuth(accessToken, user);
-         navigation.replace('Home');
-       } catch (error) {
-         console.error('Login failed:', error);
-       }
-     };
-
-     return (
-       <View className="flex-1 bg-blue-600 items-center justify-center px-8">
-         <Image
-           source={require('../../assets/icon.png')}
-           className="w-24 h-24 mb-8"
-         />
-         <Text className="text-white text-4xl font-bold mb-4">
-           RoadSense
-         </Text>
-         <Text className="text-white text-center mb-12">
-           Detect potholes automatically and help make roads safer
-         </Text>
-
-         <TouchableOpacity
-           onPress={handleLogin}
-           className="bg-white px-8 py-4 rounded-full"
-         >
-           <Text className="text-blue-600 font-bold text-lg">
-             Sign In to Continue
-           </Text>
-         </TouchableOpacity>
-       </View>
-     );
-   }
-   ```
-
-**Deliverable**: ✅ Navigation + Auth0 login
+**Deliverable**: Complete onboarding flow
 
 ---
 
-## 📅 PHASE 2: Sensor Integration & Detection (Day 2-3)
+## 📅 PHASE 2: Home Dashboard & Map (Day 2)
 
-### ✅ Day 2: Sensor Service Setup
+### Day 2 Morning: Home Dashboard UI
 
 **Tasks:**
-1. Create sensor service
-   `src/services/sensorService.ts`:
-   ```typescript
-   import {
-     Accelerometer,
-     Gyroscope,
-     AccelerometerMeasurement,
-     GyroscopeMeasurement,
-   } from 'expo-sensors';
+1. Create HomeScreen layout:
+   - Header: Avatar, level badge, XP bar
+   - Map container (70% height)
+   - Quick stats card (distance today, potholes detected)
+   - Bottom tabs navigation
+2. Create custom XP progress bar component:
+   - Show current level
+   - Progress to next level
+   - Animated fill on XP gain
+3. Create level badge component:
+   - Circular badge with level number
+   - Gold/silver/bronze colors based on tier
+4. Fetch user data on mount:
+   - GET /api/xp/me
+   - GET /api/exploration/stats
 
-   export class SensorService {
-     private accelerometerSubscription: any;
-     private gyroscopeSubscription: any;
-     private isMonitoring = false;
-
-     // Callbacks
-     private onAccelerometerData?: (data: AccelerometerMeasurement) => void;
-     private onGyroscopeData?: (data: GyroscopeMeasurement) => void;
-
-     async startMonitoring(callbacks: {
-       onAccelerometer: (data: AccelerometerMeasurement) => void;
-       onGyroscope: (data: GyroscopeMeasurement) => void;
-     }) {
-       if (this.isMonitoring) return;
-
-       this.onAccelerometerData = callbacks.onAccelerometer;
-       this.onGyroscopeData = callbacks.onGyroscope;
-
-       // Set update interval (50 Hz = 20ms)
-       Accelerometer.setUpdateInterval(20);
-       Gyroscope.setUpdateInterval(20);
-
-       // Start subscriptions
-       this.accelerometerSubscription = Accelerometer.addListener((data) => {
-         this.onAccelerometerData?.(data);
-       });
-
-       this.gyroscopeSubscription = Gyroscope.addListener((data) => {
-         this.onGyroscopeData?.(data);
-       });
-
-       this.isMonitoring = true;
-       console.log('✅ Sensors started');
-     }
-
-     stopMonitoring() {
-       if (!this.isMonitoring) return;
-
-       this.accelerometerSubscription?.remove();
-       this.gyroscopeSubscription?.remove();
-
-       this.isMonitoring = false;
-       console.log('🛑 Sensors stopped');
-     }
-
-     isActive() {
-       return this.isMonitoring;
-     }
-   }
-   ```
-
-2. Create location service
-   `src/services/locationService.ts`:
-   ```typescript
-   import * as Location from 'expo-location';
-
-   export class LocationService {
-     private locationSubscription: any;
-     private currentLocation: Location.LocationObject | null = null;
-     private currentSpeed: number = 0; // km/h
-
-     async requestPermissions(): Promise<boolean> {
-       const { status } = await Location.requestForegroundPermissionsAsync();
-
-       if (status !== 'granted') {
-         console.error('Location permission denied');
-         return false;
-       }
-
-       return true;
-     }
-
-     async startTracking(callback: (location: Location.LocationObject) => void) {
-       const hasPermission = await this.requestPermissions();
-       if (!hasPermission) return;
-
-       this.locationSubscription = await Location.watchPositionAsync(
-         {
-           accuracy: Location.Accuracy.BestForNavigation,
-           timeInterval: 1000, // 1 second
-           distanceInterval: 5, // 5 meters
-         },
-         (location) => {
-           this.currentLocation = location;
-
-           // Calculate speed in km/h
-           if (location.coords.speed !== null && location.coords.speed >= 0) {
-             this.currentSpeed = location.coords.speed * 3.6; // m/s to km/h
-           }
-
-           callback(location);
-         }
-       );
-
-       console.log('✅ Location tracking started');
-     }
-
-     stopTracking() {
-       this.locationSubscription?.remove();
-       console.log('🛑 Location tracking stopped');
-     }
-
-     getCurrentLocation() {
-       return this.currentLocation;
-     }
-
-     getCurrentSpeed() {
-       return this.currentSpeed;
-     }
-   }
-   ```
-
-**Deliverable**: ✅ Sensor + Location services
+**Deliverable**: Home dashboard UI without map
 
 ---
 
-### ✅ Day 3: Pothole Detection Algorithm
+### Day 2 Afternoon: Fog of War Map
 
 **Tasks:**
-1. Create signal processing utilities
-   `src/utils/signalProcessing.ts`:
-   ```typescript
-   import { AccelerometerMeasurement } from 'expo-sensors';
+1. Integrate react-native-maps
+2. Create fog of war overlay:
+   - Fetch explored cells: GET /api/exploration/cells
+   - Render 100m x 100m grid squares as polygons
+   - Color cells based on road quality:
+     - Green (good): 0-2 potholes
+     - Yellow (moderate): 3-5 potholes
+     - Red (poor): 6+ potholes
+   - Dark/transparent for unexplored cells
+3. Add pothole markers:
+   - Fetch nearby: GET /api/potholes/nearby
+   - Color by severity (green/yellow/red)
+   - Show severity on tap
+4. Add user location marker (blue dot)
 
-   export class SignalProcessing {
-     private accelBuffer: number[] = [];
-     private readonly BUFFER_SIZE = 10;
-
-     // High-pass filter to isolate spikes
-     private lastFiltered = 0;
-     private readonly FILTER_ALPHA = 0.8;
-
-     calculateMagnitude(data: AccelerometerMeasurement): number {
-       const { x, y, z } = data;
-       return Math.sqrt(x * x + y * y + z * z);
-     }
-
-     // Extract vertical component (assuming phone is relatively stable)
-     getVerticalAcceleration(data: AccelerometerMeasurement): number {
-       // Simplified: use z-axis as vertical
-       // In production, would use gyro data to transform to earth frame
-       return Math.abs(data.z);
-     }
-
-     // High-pass filter to remove smooth changes
-     applyHighPassFilter(value: number): number {
-       const filtered = this.FILTER_ALPHA * (this.lastFiltered + value - (this.accelBuffer[0] || value));
-       this.lastFiltered = filtered;
-
-       // Add to buffer
-       this.accelBuffer.push(value);
-       if (this.accelBuffer.length > this.BUFFER_SIZE) {
-         this.accelBuffer.shift();
-       }
-
-       return Math.abs(filtered);
-     }
-
-     // Detect spike pattern
-     isSpikePattern(filteredValue: number, threshold: number): boolean {
-       return filteredValue > threshold;
-     }
-
-     reset() {
-       this.accelBuffer = [];
-       this.lastFiltered = 0;
-     }
-   }
-   ```
-
-2. Create context checks
-   `src/utils/contextChecks.ts`:
-   ```typescript
-   import { GyroscopeMeasurement } from 'expo-sensors';
-
-   export class ContextChecks {
-     private orientationBuffer: GyroscopeMeasurement[] = [];
-     private readonly BUFFER_SIZE = 30; // 30 samples @ 50Hz = 0.6 seconds
-
-     // Check if speed is in valid range for driving
-     isValidSpeed(speed: number): boolean {
-       return speed >= 15 && speed <= 90; // km/h
-     }
-
-     // Check if device is stable (not being waved around)
-     isDeviceStable(gyroData: GyroscopeMeasurement): boolean {
-       this.orientationBuffer.push(gyroData);
-
-       if (this.orientationBuffer.length > this.BUFFER_SIZE) {
-         this.orientationBuffer.shift();
-       }
-
-       if (this.orientationBuffer.length < this.BUFFER_SIZE) {
-         return false; // Not enough data yet
-       }
-
-       // Calculate variance
-       const variance = this.calculateVariance(
-         this.orientationBuffer.map((d) =>
-           Math.sqrt(d.x * d.x + d.y * d.y + d.z * d.z)
-         )
-       );
-
-       // Low variance = stable device
-       return variance < 0.5;
-     }
-
-     private calculateVariance(values: number[]): number {
-       const mean = values.reduce((a, b) => a + b, 0) / values.length;
-       const squaredDiffs = values.map((v) => Math.pow(v - mean, 2));
-       return squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
-     }
-
-     reset() {
-       this.orientationBuffer = [];
-     }
-   }
-   ```
-
-3. Create detection service
-   `src/services/detectionService.ts`:
-   ```typescript
-   import { AccelerometerMeasurement, GyroscopeMeasurement } from 'expo-sensors';
-   import { SignalProcessing } from '../utils/signalProcessing';
-   import { ContextChecks } from '../utils/contextChecks';
-
-   interface PotholeEvent {
-     timestamp: Date;
-     location: { lat: number; lng: number };
-     magnitude: number;
-     speed: number;
-   }
-
-   export class DetectionService {
-     private signalProcessor = new SignalProcessing();
-     private contextChecker = new ContextChecks();
-
-     private readonly POTHOLE_THRESHOLD = 1.5; // 1.5g spike
-     private readonly COOLDOWN_MS = 2000; // 2 seconds between detections
-     private lastDetectionTime = 0;
-
-     private onPotholeDetected?: (event: PotholeEvent) => void;
-
-     setCallback(callback: (event: PotholeEvent) => void) {
-       this.onPotholeDetected = callback;
-     }
-
-     processAccelerometerData(
-       accelData: AccelerometerMeasurement,
-       gyroData: GyroscopeMeasurement,
-       location: { lat: number; lng: number },
-       speed: number
-     ) {
-       // Context checks
-       if (!this.contextChecker.isValidSpeed(speed)) {
-         return; // Not driving speed
-       }
-
-       if (!this.contextChecker.isDeviceStable(gyroData)) {
-         return; // Device not stable
-       }
-
-       // Cooldown check
-       const now = Date.now();
-       if (now - this.lastDetectionTime < this.COOLDOWN_MS) {
-         return;
-       }
-
-       // Signal processing
-       const magnitude = this.signalProcessor.calculateMagnitude(accelData);
-       const vertical = this.signalProcessor.getVerticalAcceleration(accelData);
-       const filtered = this.signalProcessor.applyHighPassFilter(vertical);
-
-       // Detection
-       if (this.signalProcessor.isSpikePattern(filtered, this.POTHOLE_THRESHOLD)) {
-         console.log('🕳️ POTHOLE DETECTED!', { magnitude, filtered, speed });
-
-         this.lastDetectionTime = now;
-
-         const event: PotholeEvent = {
-           timestamp: new Date(),
-           location,
-           magnitude: filtered,
-           speed,
-         };
-
-         this.onPotholeDetected?.(event);
-       }
-     }
-
-     reset() {
-       this.signalProcessor.reset();
-       this.contextChecker.reset();
-       this.lastDetectionTime = 0;
-     }
-   }
-   ```
-
-**Deliverable**: ✅ Pothole detection algorithm
+**Deliverable**: Fog of war map on home screen
 
 ---
 
-## 📅 PHASE 3: API Integration & Driving Screen (Day 3-4)
+## 📅 PHASE 3: Drive Mode & Detection (Day 3)
 
-### ✅ Day 3 Afternoon: API Service
+### Day 3 Morning: Pre-Drive & Active Drive
 
 **Tasks:**
-1. Create API service
-   `src/services/apiService.ts`:
-   ```typescript
-   import axios from 'axios';
-   import { useAppStore } from '../store/useAppStore';
+1. Create DriveModeScreen (keep existing sensor logic):
+   - Pre-drive state:
+     - "Start Drive" button
+     - Estimated XP potential
+   - Active drive state:
+     - Large speedometer (current speed)
+     - Pulsing "Monitoring..." indicator
+     - Pothole counter badge
+     - XP earned so far
+     - "End Drive" button
+2. Integrate with backend:
+   - Call POST /api/drives/start on start
+   - Send GPS updates: POST /api/drives/update every 10 seconds
+   - Call POST /api/drives/end on end
+3. Keep existing sensor detection logic
+4. On pothole detected:
+   - Haptic feedback
+   - Flash screen border green
+   - Increment counter
+   - Send event: POST /api/events
 
-   const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
-
-   const api = axios.create({
-     baseURL: API_BASE_URL,
-     headers: {
-       'Content-Type': 'application/json',
-     },
-   });
-
-   // Add auth token to requests
-   api.interceptors.request.use((config) => {
-     const token = useAppStore.getState().accessToken;
-     if (token) {
-       config.headers.Authorization = `Bearer ${token}`;
-     }
-     return config;
-   });
-
-   export class APIService {
-     // Send pothole event
-     static async sendPotholeEvent(eventData: {
-       location: { coordinates: [number, number] };
-       accelerationData: {
-         magnitude: number;
-         x: number;
-         y: number;
-         z: number;
-       };
-       speed: number;
-       timestamp: Date;
-     }) {
-       try {
-         const response = await api.post('/events', eventData);
-         return response.data;
-       } catch (error) {
-         console.error('Send event error:', error);
-         throw error;
-       }
-     }
-
-     // Get nearby potholes
-     static async getNearbyPotholes(lat: number, lng: number, radius = 1000) {
-       try {
-         const response = await api.get('/potholes/nearby', {
-           params: { lat, lng, radius },
-         });
-         return response.data.potholes;
-       } catch (error) {
-         console.error('Get nearby potholes error:', error);
-         return [];
-       }
-     }
-
-     // Upload photo
-     static async uploadPhoto(potholeId: string, base64Image: string) {
-       try {
-         const response = await api.post('/upload/photo', {
-           potholeId,
-           image: base64Image,
-         });
-         return response.data;
-       } catch (error) {
-         console.error('Upload photo error:', error);
-         throw error;
-       }
-     }
-   }
-   ```
-
-**Deliverable**: ✅ API service
+**Deliverable**: Drive mode with backend integration
 
 ---
 
-### ✅ Day 4 Morning: Driving Screen
+### Day 3 Afternoon: Post-Drive Summary
 
 **Tasks:**
-1. Create Driving Screen
-   `src/screens/DrivingScreen.tsx`:
-   ```typescript
-   import React, { useEffect, useState } from 'react';
-   import { View, Text, TouchableOpacity } from 'react-native';
-   import { SensorService } from '../services/sensorService';
-   import { LocationService } from '../services/locationService';
-   import { DetectionService } from '../services/detectionService';
-   import { APIService } from '../services/apiService';
-   import { useAppStore } from '../store/useAppStore';
+1. Create PostDriveSummaryScreen (modal):
+   - Show drive stats:
+     - Duration (e.g., "25 minutes")
+     - Distance (e.g., "12.4 km")
+     - Potholes detected (e.g., "7")
+     - New cells explored (e.g., "18")
+   - XP breakdown:
+     - Distance: 10 XP/km = 124 XP
+     - New cells: 50 XP × 18 = 900 XP
+     - Potholes: 100 XP × 7 = 700 XP
+     - Total: 1,724 XP
+   - Level up animation if leveled up
+   - Achievements unlocked (if any)
+   - "Continue" button
+2. Animate XP bar filling up
+3. Show confetti animation on level up
 
-   export default function DrivingScreen({ navigation }: any) {
-     const [isMonitoring, setIsMonitoring] = useState(false);
-     const [speed, setSpeed] = useState(0);
-     const incrementPotholes = useAppStore((state) => state.incrementPotholes);
-     const endTrip = useAppStore((state) => state.endTrip);
-
-     const sensorService = new SensorService();
-     const locationService = new LocationService();
-     const detectionService = new DetectionService();
-
-     useEffect(() => {
-       startDriving();
-
-       return () => {
-         stopDriving();
-       };
-     }, []);
-
-     const startDriving = async () => {
-       // Setup detection callback
-       detectionService.setCallback(async (event) => {
-         console.log('Pothole detected:', event);
-
-         // Play alert sound (implement later)
-         // playAlertSound();
-
-         // Send to backend
-         try {
-           await APIService.sendPotholeEvent({
-             location: {
-               coordinates: [event.location.lng, event.location.lat],
-             },
-             accelerationData: {
-               magnitude: event.magnitude,
-               x: 0,
-               y: 0,
-               z: event.magnitude,
-             },
-             speed: event.speed,
-             timestamp: event.timestamp,
-           });
-
-           incrementPotholes();
-         } catch (error) {
-           console.error('Failed to send event:', error);
-         }
-       });
-
-       // Start location tracking
-       await locationService.startTracking((location) => {
-         setSpeed(locationService.getCurrentSpeed());
-       });
-
-       // Start sensors
-       let lastGyroData: any = { x: 0, y: 0, z: 0 };
-
-       await sensorService.startMonitoring({
-         onAccelerometer: (accelData) => {
-           const location = locationService.getCurrentLocation();
-           const currentSpeed = locationService.getCurrentSpeed();
-
-           if (location) {
-             detectionService.processAccelerometerData(
-               accelData,
-               lastGyroData,
-               {
-                 lat: location.coords.latitude,
-                 lng: location.coords.longitude,
-               },
-               currentSpeed
-             );
-           }
-         },
-         onGyroscope: (gyroData) => {
-           lastGyroData = gyroData;
-         },
-       });
-
-       setIsMonitoring(true);
-     };
-
-     const stopDriving = () => {
-       sensorService.stopMonitoring();
-       locationService.stopTracking();
-       setIsMonitoring(false);
-     };
-
-     const handleEndTrip = () => {
-       stopDriving();
-       endTrip();
-       navigation.navigate('Home');
-     };
-
-     return (
-       <View className="flex-1 bg-gray-900 items-center justify-center px-8">
-         <View className="bg-white rounded-full w-64 h-64 items-center justify-center mb-12">
-           <Text className="text-6xl font-bold text-blue-600">{speed.toFixed(0)}</Text>
-           <Text className="text-gray-500 text-lg">km/h</Text>
-         </View>
-
-         <Text className="text-white text-xl mb-4">Monitoring...</Text>
-         <View className="w-4 h-4 bg-green-500 rounded-full animate-pulse" />
-
-         <TouchableOpacity
-           onPress={handleEndTrip}
-           className="absolute bottom-12 bg-red-500 px-12 py-4 rounded-full"
-         >
-           <Text className="text-white font-bold text-lg">End Trip</Text>
-         </TouchableOpacity>
-       </View>
-     );
-   }
-   ```
-
-**Deliverable**: ✅ Driving mode sa detekcijom
+**Deliverable**: Post-drive summary with animations
 
 ---
 
-## 📅 PHASE 4: Map & Alerts (Day 4-5)
+## 📅 PHASE 4: Profile & Achievements (Day 4)
 
-### ✅ Day 4 Afternoon: Map Screen
+### Day 4 Morning: Profile Screen
 
 **Tasks:**
-1. Create Map Screen
-   `src/screens/MapScreen.tsx`:
-   ```typescript
-   import React, { useEffect, useState } from 'react';
-   import { View, StyleSheet } from 'react-native';
-   import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-   import { APIService } from '../services/apiService';
-   import * as Location from 'expo-location';
+1. Create ProfileScreen layout:
+   - Header: Avatar, username, level badge
+   - XP bar (progress to next level)
+   - Stats grid (4 cards):
+     - Distance Driven: "142 km"
+     - Potholes Detected: "34"
+     - Cells Explored: "215"
+     - Exploration %: "12.4%"
+   - Recent drives list (last 5)
+   - Settings button (gear icon)
+2. Fetch user stats: GET /api/stats/user/:id
+3. Make stats cards visually appealing (icons + numbers)
 
-   export default function MapScreen() {
-     const [region, setRegion] = useState({
-       latitude: 45.7489,
-       longitude: 21.2257,
-       latitudeDelta: 0.05,
-       longitudeDelta: 0.05,
-     });
-     const [potholes, setPotholes] = useState<any[]>([]);
-
-     useEffect(() => {
-       getCurrentLocation();
-       fetchNearbyPotholes();
-     }, []);
-
-     const getCurrentLocation = async () => {
-       const location = await Location.getCurrentPositionAsync({});
-       setRegion({
-         latitude: location.coords.latitude,
-         longitude: location.coords.longitude,
-         latitudeDelta: 0.05,
-         longitudeDelta: 0.05,
-       });
-     };
-
-     const fetchNearbyPotholes = async () => {
-       const data = await APIService.getNearbyPotholes(
-         region.latitude,
-         region.longitude
-       );
-       setPotholes(data);
-     };
-
-     const getMarkerColor = (severity: number) => {
-       if (severity >= 70) return '#ef4444'; // red
-       if (severity >= 40) return '#f59e0b'; // orange
-       return '#10b981'; // green
-     };
-
-     return (
-       <View style={styles.container}>
-         <MapView
-           provider={PROVIDER_GOOGLE}
-           style={styles.map}
-           region={region}
-           showsUserLocation
-           showsMyLocationButton
-         >
-           {potholes.map((pothole) => (
-             <Marker
-               key={pothole._id}
-               coordinate={{
-                 latitude: pothole.location.coordinates[1],
-                 longitude: pothole.location.coordinates[0],
-               }}
-               pinColor={getMarkerColor(pothole.severity)}
-               title={`Severity: ${pothole.severity}`}
-               description={`Reports: ${pothole.reports}`}
-             />
-           ))}
-         </MapView>
-       </View>
-     );
-   }
-
-   const styles = StyleSheet.create({
-     container: { flex: 1 },
-     map: { flex: 1 },
-   });
-   ```
-
-**Deliverable**: ✅ Map sa pothole markerima
+**Deliverable**: Profile screen with stats
 
 ---
 
-### ✅ Day 5: Real-time Alerts
+### Day 4 Afternoon: Achievements Screen
 
 **Tasks:**
-1. Create alert service
-   `src/services/alertService.ts`:
-   ```typescript
-   import * as Speech from 'expo-speech';
-   import { Audio } from 'expo-av';
+1. Create AchievementsScreen layout:
+   - Tabs: All / Unlocked / Locked
+   - Grid of achievement cards (3 columns)
+2. Create achievement card component:
+   - Locked: Grayed out, lock icon, progress bar
+   - Unlocked: Full color, checkmark, unlock date
+3. Fetch achievements:
+   - GET /api/achievements/me (unlocked)
+   - GET /api/achievements/progress (locked with progress)
+4. Achievement categories:
+   - Exploration (compass icon)
+   - Detection (pothole icon)
+   - Streaks (fire icon)
+   - Distance (road icon)
+5. Show progress for locked achievements:
+   - "First Cell: 1/1"
+   - "10 Cells: 7/10"
 
-   export class AlertService {
-     private static sound: Audio.Sound | null = null;
-
-     // Voice alert
-     static async speakAlert(message: string) {
-       await Speech.speak(message, {
-         language: 'en-US',
-         pitch: 1.0,
-         rate: 1.0,
-       });
-     }
-
-     // Play beep sound
-     static async playBeep() {
-       try {
-         if (!this.sound) {
-           const { sound } = await Audio.Sound.createAsync(
-             require('../../assets/beep.mp3')
-           );
-           this.sound = sound;
-         }
-
-         await this.sound.replayAsync();
-       } catch (error) {
-         console.error('Play sound error:', error);
-       }
-     }
-
-     static async cleanup() {
-       if (this.sound) {
-         await this.sound.unloadAsync();
-         this.sound = null;
-       }
-     }
-   }
-   ```
-
-2. Add proximity checking to Driving Screen
-   ```typescript
-   // In DrivingScreen, add interval to check nearby potholes
-   useEffect(() => {
-     const interval = setInterval(async () => {
-       const location = locationService.getCurrentLocation();
-       if (!location) return;
-
-       const nearby = await APIService.getNearbyPotholes(
-         location.coords.latitude,
-         location.coords.longitude,
-         200 // 200m ahead
-       );
-
-       // Alert for high severity potholes
-       nearby.forEach((pothole) => {
-         if (pothole.severity >= 70) {
-           AlertService.speakAlert('Caution: severe pothole ahead!');
-           AlertService.playBeep();
-         }
-       });
-     }, 5000); // Check every 5 seconds
-
-     return () => clearInterval(interval);
-   }, []);
-   ```
-
-**Deliverable**: ✅ Real-time alerts
+**Deliverable**: Achievement grid with progress
 
 ---
 
-## 📅 PHASE 5: Camera & Polish (Day 6-7)
+## 📅 PHASE 5: Leaderboards & Rewards (Day 5)
 
-### ✅ Day 6: Photo Capture
+### Day 5 Morning: Leaderboard Screen
 
 **Tasks:**
-1. Create Camera Screen
-   `src/screens/CameraScreen.tsx`:
-   ```typescript
-   import React, { useState, useRef } from 'react';
-   import { View, Text, TouchableOpacity, Image } from 'react-native';
-   import { Camera } from 'expo-camera';
-   import { APIService } from '../services/apiService';
+1. Create LeaderboardScreen layout:
+   - Tabs: Daily / Weekly / Monthly / All-Time
+   - Top 3 podium (1st, 2nd, 3rd with avatars)
+   - Ranked list (4-100)
+   - User's rank card pinned at bottom
+2. Create leaderboard row component:
+   - Rank number
+   - Avatar + username
+   - Level badge
+   - Total XP
+3. Fetch leaderboards:
+   - GET /api/leaderboard/daily
+   - GET /api/leaderboard/weekly
+   - GET /api/leaderboard/monthly
+   - GET /api/leaderboard/all-time
+   - GET /api/leaderboard/me (user's rank)
+4. Highlight user's row in green
+5. Add pull-to-refresh
 
-   export default function CameraScreen({ route, navigation }: any) {
-     const { potholeId } = route.params;
-     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-     const [photo, setPhoto] = useState<string | null>(null);
-     const cameraRef = useRef<Camera>(null);
-
-     useEffect(() => {
-       (async () => {
-         const { status } = await Camera.requestCameraPermissionsAsync();
-         setHasPermission(status === 'granted');
-       })();
-     }, []);
-
-     const takePicture = async () => {
-       if (!cameraRef.current) return;
-
-       const photo = await cameraRef.current.takePictureAsync({
-         base64: true,
-       });
-
-       setPhoto(photo.uri);
-     };
-
-     const uploadPhoto = async () => {
-       if (!photo) return;
-
-       try {
-         await APIService.uploadPhoto(potholeId, photo);
-         navigation.goBack();
-       } catch (error) {
-         console.error('Upload failed:', error);
-       }
-     };
-
-     if (hasPermission === null) {
-       return <View />;
-     }
-
-     if (hasPermission === false) {
-       return <Text>No camera access</Text>;
-     }
-
-     if (photo) {
-       return (
-         <View className="flex-1">
-           <Image source={{ uri: photo }} className="flex-1" />
-           <View className="absolute bottom-8 w-full px-8 flex-row gap-4">
-             <TouchableOpacity
-               onPress={() => setPhoto(null)}
-               className="flex-1 bg-gray-500 py-4 rounded-lg"
-             >
-               <Text className="text-white text-center font-bold">Retake</Text>
-             </TouchableOpacity>
-             <TouchableOpacity
-               onPress={uploadPhoto}
-               className="flex-1 bg-blue-600 py-4 rounded-lg"
-             >
-               <Text className="text-white text-center font-bold">Upload</Text>
-             </TouchableOpacity>
-           </View>
-         </View>
-       );
-     }
-
-     return (
-       <View className="flex-1">
-         <Camera ref={cameraRef} className="flex-1" type={Camera.Constants.Type.back} />
-         <TouchableOpacity
-           onPress={takePicture}
-           className="absolute bottom-8 self-center bg-white w-20 h-20 rounded-full"
-         />
-       </View>
-     );
-   }
-   ```
-
-**Deliverable**: ✅ Camera integration
+**Deliverable**: Leaderboard with tabs
 
 ---
 
-### ✅ Day 7: Final Polish
+### Day 5 Afternoon: Rewards Marketplace
 
 **Tasks:**
-1. Create Home Screen
-   `src/screens/HomeScreen.tsx`:
-   ```typescript
-   import React from 'react';
-   import { View, Text, TouchableOpacity } from 'react-native';
-   import { useAppStore } from '../store/useAppStore';
+1. Create RewardsScreen layout:
+   - Available rewards grid (2 columns)
+   - "My Rewards" button
+2. Create reward card component:
+   - Partner logo
+   - Reward name
+   - XP cost
+   - "Redeem" button
+   - Disabled if insufficient XP
+3. Create RedeemModal:
+   - Show reward details
+   - Confirm XP deduction
+   - Call POST /api/rewards/redeem
+   - Display QR code on success
+4. Create MyRewardsScreen:
+   - List of redeemed rewards
+   - Show QR code for each
+   - Expiry date
+   - Status (active/redeemed/expired)
+5. Fetch rewards:
+   - GET /api/rewards (available)
+   - GET /api/rewards/me (user's redeemed)
 
-   export default function HomeScreen({ navigation }: any) {
-     const { user, trip, startTrip } = useAppStore();
+**Deliverable**: Rewards marketplace with QR codes
 
-     const handleStartDrive = () => {
-       startTrip();
-       navigation.navigate('Driving');
-     };
+---
 
-     return (
-       <View className="flex-1 bg-white px-8 pt-12">
-         <Text className="text-3xl font-bold mb-2">Welcome back,</Text>
-         <Text className="text-2xl text-gray-600 mb-12">{user?.name || 'Driver'}</Text>
+## 📅 PHASE 6: Walking Mode & Alerts (Day 6)
 
-         <TouchableOpacity
-           onPress={handleStartDrive}
-           className="bg-blue-600 py-6 rounded-xl mb-6"
-         >
-           <Text className="text-white text-center text-xl font-bold">
-             Start Driving
-           </Text>
-         </TouchableOpacity>
+### Day 6 Morning: Walking Mode
 
-         <TouchableOpacity
-           onPress={() => navigation.navigate('Map')}
-           className="bg-gray-200 py-6 rounded-xl"
-         >
-           <Text className="text-gray-800 text-center text-xl font-bold">
-             View Pothole Map
-           </Text>
-         </TouchableOpacity>
+**Tasks:**
+1. Keep existing WalkingModeScreen camera logic
+2. Update to use Expo Camera (CameraView)
+3. Integrate with AI verification:
+   - Take photo
+   - Show preview with "Submit" button
+   - Call POST /api/verify/photo
+   - Show loading: "Verifying with AI..."
+   - Display result:
+     - Verified: "Pothole confirmed! +100 XP"
+     - Rejected: "Not a pothole. Try again."
+4. Add XP notification animation on success
+5. Update exploration grid if new cell
 
-         <View className="mt-12 bg-gray-100 p-6 rounded-xl">
-           <Text className="text-lg font-bold mb-4">Your Stats</Text>
-           <Text className="text-gray-600">Total Reports: {user?.stats?.totalReports || 0}</Text>
-           <Text className="text-gray-600">Points: {user?.stats?.points || 0}</Text>
-         </View>
-       </View>
-     );
-   }
-   ```
+**Deliverable**: Walking mode with AI verification
 
-2. **Testing & Bug Fixes:**
-   - Test on real device (iOS)
-   - Calibrate detection threshold
-   - Fix any crashes
-   - Optimize battery usage
+---
 
-3. **Loading States & Error Handling:**
-   - Add loading spinners
-   - Error messages
-   - Offline mode handling
+### Day 6 Afternoon: Real-time Alerts
 
-4. **Permissions Handling:**
-   - Proper permission requests
-   - Explain why permissions needed
+**Tasks:**
+1. Create Socket.IO service:
+   - Connect with JWT token
+   - Subscribe to nearby potholes
+   - Listen for events:
+     - `new_pothole` - Show alert banner
+     - `level_up` - Self-emitted, show animation
+     - `achievement_unlocked` - Show popup
+2. Create alert components:
+   - Banner alert (top slide-in):
+     - "Caution: Severe pothole 200m ahead!"
+     - Auto-dismiss after 5 seconds
+   - Achievement popup (center modal):
+     - Achievement icon + name
+     - "Unlocked!" badge
+     - XP earned
+3. Add voice alerts:
+   - Use expo-speech
+   - "Caution: pothole ahead"
+4. Check nearby potholes every 5 seconds during drive
 
-**Deliverable**: ✅ Polished mobile app
+**Deliverable**: Real-time alerts for potholes & achievements
+
+---
+
+## 📅 PHASE 7: Polish & Animations (Day 7)
+
+### Day 7 Morning: Animations & Transitions
+
+**Tasks:**
+1. Add level up animation:
+   - Confetti explosion
+   - Level badge grows + spins
+   - Sound effect
+2. Add XP gain animation:
+   - Numbers fly up (+100 XP)
+   - XP bar fills smoothly
+3. Add achievement unlock animation:
+   - Lock breaks open
+   - Card flips to full color
+   - Sparkle effect
+4. Add smooth transitions:
+   - Screen transitions (fade/slide)
+   - Button press feedback
+   - Loading states with spinners
+5. Use React Native Reanimated for performance
+
+**Deliverable**: Polished animations throughout app
+
+---
+
+### Day 7 Afternoon: Testing & Bug Fixes
+
+**Tasks:**
+1. Test on real device (iOS/Android):
+   - Sensors work correctly
+   - GPS accuracy
+   - Detection threshold calibration
+   - Battery usage optimization
+2. Add error handling:
+   - Network errors (show retry button)
+   - Offline mode (cache data locally)
+   - Permission denied (redirect to settings)
+3. Add loading states:
+   - Skeleton screens
+   - Spinners for API calls
+4. Settings screen:
+   - Detection sensitivity slider
+   - Notifications toggle
+   - Sound alerts toggle
+   - Logout button
+5. Fix any crashes or UI bugs
+
+**Deliverable**: Production-ready mobile app
 
 ---
 
 ## 🎯 PRIORITY CHECKLIST
 
 ### MUST HAVE
-- [x] Auth0 login
-- [x] Sensor monitoring (accelerometer + gyro)
-- [x] GPS tracking
-- [x] Pothole detection algorithm
-- [x] Send events to backend
-- [x] Driving screen
+- [ ] Onboarding flow (Welcome, Features, Auth, Permissions) - **NOT STARTED**
+- [ ] Home dashboard with fog of war map - **BASIC HOME EXISTS**
+- [x] Drive mode with auto-detection - **IMPLEMENTED (Legacy)**
+- [ ] Post-drive summary with XP breakdown - **NOT STARTED**
+- [ ] Profile screen with stats - **NOT STARTED**
+- [ ] Achievement grid - **NOT STARTED**
+- [ ] Leaderboard (at least all-time) - **NOT STARTED**
 
 ### SHOULD HAVE
-- [x] Map sa nearby potholes
-- [x] Real-time alerts
-- [x] Camera za fotografije
-- [x] Home screen sa stats
+- [x] Walking mode with AI verification - **IMPLEMENTED (Legacy)**
+- [ ] Rewards marketplace with QR codes - **NOT STARTED**
+- [ ] Real-time alerts (potholes, achievements) - **NOT STARTED**
+- [ ] Animations (level up, XP gain, unlock) - **NOT STARTED**
+- [ ] Settings screen - **NOT STARTED**
 
 ### NICE TO HAVE
+- [ ] Daily challenges
+- [ ] Social features (friends, teams)
 - [ ] Trip history
-- [ ] Gamification (badges, leaderboard)
-- [ ] Offline mode (cache events)
-- [ ] Settings screen
+- [ ] Dark mode
+- [ ] Offline mode
 
 ---
 
-## 🐛 COMMON ISSUES
+## ✅ TRENUTNO IMPLEMENTIRANO (Legacy sistem)
 
-### Sensors not working in simulator
-```typescript
-// Sensors only work on real device!
-// Test on physical iPhone
+**Screens:**
+- ✅ HomeScreen.tsx (new minimalist, logo placeholder)
+- ✅ HomeScreenLegacy.tsx (preserved for demo)
+- ✅ DrivingModeScreen.tsx (full auto-detection, sensors)
+- ✅ WalkingModeScreen.tsx (camera + manual detection)
+- ✅ TestModeScreen.tsx (manual testing)
+- ✅ TestBackendScreen.tsx (API testing)
+- ✅ ViewGraphsScreen.tsx (real-time sensor graphs)
+- ✅ SensorDebugScreen.tsx (sensor calibration)
+
+**Components:**
+- ✅ ActionButton.tsx (FAB with menu)
+- ✅ HomeActionButton.tsx (home-specific FAB)
+- ✅ Button.tsx (generic button)
+- ✅ Card.tsx (generic card)
+
+**Services:**
+- ✅ sensorService.ts (accelerometer + gyroscope at 50Hz)
+- ✅ locationService.ts (GPS tracking)
+- ✅ detectionService.ts (pothole detection algorithm)
+- ✅ apiService.ts (backend communication)
+
+**Utils:**
+- ✅ signalProcessing.ts (high-pass filter, spike detection)
+- ✅ contextChecks.ts (speed validation, device stability)
+- ✅ constants.ts (app constants)
+
+**Types:**
+- ✅ pothole.types.ts (TypeScript types)
+
+**Navigation:**
+- ✅ Basic screen switching (useState-based)
+- ⚠️ No navigation library (React Navigation not installed)
+
+---
+
+## 🚧 ŠTA TREBA DODATI (Gamification)
+
+**PRIORITY 1 - Navigation & Onboarding:**
+1. Install React Navigation (stack + bottom tabs)
+2. Install Zustand (state management)
+3. Install Socket.IO client
+4. WelcomeScreen (new)
+5. FeaturesScreen (new)
+6. AuthScreen (new)
+7. PermissionsScreen (new)
+8. Navigation structure (Onboarding → Main Tabs)
+
+**PRIORITY 2 - Core Gamification Screens:**
+1. HomeScreen update (fog of war map)
+2. ProfileScreen (new - stats, XP, level)
+3. AchievementsScreen (new - grid with progress)
+4. LeaderboardScreen (new - tabs for daily/weekly/monthly)
+5. RewardsScreen (new - marketplace)
+
+**PRIORITY 3 - Components:**
+1. XPBar.tsx (new - animated progress bar)
+2. LevelBadge.tsx (new - circular badge)
+3. AchievementCard.tsx (new - locked/unlocked states)
+4. LeaderboardRow.tsx (new - ranking display)
+5. RewardCard.tsx (new - reward with XP cost)
+6. AlertBanner.tsx (new - top slide-in alerts)
+7. FogOfWarMap.tsx (new - map with grid overlay)
+
+**PRIORITY 4 - Integration:**
+1. PostDriveSummaryScreen (new - XP breakdown modal)
+2. MyRewardsScreen (new - QR code display)
+3. SettingsScreen (new - sensitivity, notifications)
+4. Socket.IO service (new - real-time events)
+5. Auth service (new - JWT token management)
+6. API service update (add all new endpoints)
+
+**PRIORITY 5 - Polish:**
+1. Animations (level up, XP gain, achievement unlock)
+2. Voice alerts (expo-speech)
+3. Haptic feedback
+4. Loading states
+5. Error handling
+6. Offline mode
+
+---
+
+## 📱 SCREEN LIST
+
+**Onboarding Stack:**
+1. WelcomeScreen
+2. FeaturesScreen
+3. AuthScreen
+4. PermissionsScreen
+
+**Main Tab Navigator:**
+1. HomeScreen (fog of war map)
+2. ProfileScreen (stats, level, XP)
+3. AchievementsScreen (grid, progress)
+4. LeaderboardScreen (daily/weekly/monthly/all-time)
+5. RewardsScreen (marketplace)
+
+**Modal Screens:**
+6. DriveModeScreen
+7. WalkingModeScreen
+8. PostDriveSummaryScreen
+9. SettingsScreen
+10. MyRewardsScreen (QR codes)
+
+---
+
+## 🗂️ FOLDER STRUCTURE
+
 ```
-
-### Location permissions denied
-```typescript
-// Request in app.json:
-{
-  "expo": {
-    "ios": {
-      "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "We need your location to detect potholes",
-        "NSMotionUsageDescription": "We use motion sensors to detect potholes"
-      }
-    }
-  }
-}
-```
-
-### Detection too sensitive
-```typescript
-// Adjust POTHOLE_THRESHOLD in detectionService.ts
-private readonly POTHOLE_THRESHOLD = 2.0; // Increase to reduce false positives
+mobile/
+├── src/
+│   ├── screens/
+│   │   ├── onboarding/
+│   │   │   ├── WelcomeScreen.tsx
+│   │   │   ├── FeaturesScreen.tsx
+│   │   │   ├── AuthScreen.tsx
+│   │   │   └── PermissionsScreen.tsx
+│   │   ├── main/
+│   │   │   ├── HomeScreen.tsx
+│   │   │   ├── ProfileScreen.tsx
+│   │   │   ├── AchievementsScreen.tsx
+│   │   │   ├── LeaderboardScreen.tsx
+│   │   │   └── RewardsScreen.tsx
+│   │   ├── modes/
+│   │   │   ├── DriveModeScreen.tsx
+│   │   │   └── WalkingModeScreen.tsx
+│   │   ├── modals/
+│   │   │   ├── PostDriveSummaryScreen.tsx
+│   │   │   ├── SettingsScreen.tsx
+│   │   │   └── MyRewardsScreen.tsx
+│   │   └── legacy/
+│   │       ├── HomeScreenLegacy.tsx
+│   │       ├── DrivingModeScreen.tsx
+│   │       └── TestModeScreen.tsx
+│   ├── components/
+│   │   ├── XPBar.tsx
+│   │   ├── LevelBadge.tsx
+│   │   ├── AchievementCard.tsx
+│   │   ├── LeaderboardRow.tsx
+│   │   ├── RewardCard.tsx
+│   │   ├── AlertBanner.tsx
+│   │   ├── FogOfWarMap.tsx
+│   │   └── Button.tsx
+│   ├── services/
+│   │   ├── apiService.ts
+│   │   ├── socketService.ts
+│   │   ├── sensorService.ts
+│   │   ├── locationService.ts
+│   │   ├── detectionService.ts
+│   │   └── authService.ts
+│   ├── store/
+│   │   └── useAppStore.ts
+│   ├── navigation/
+│   │   ├── OnboardingNavigator.tsx
+│   │   ├── MainTabNavigator.tsx
+│   │   └── RootNavigator.tsx
+│   ├── utils/
+│   │   ├── signalProcessing.ts
+│   │   ├── gridCalculations.ts
+│   │   └── animations.ts
+│   └── types/
+│       └── index.ts
+├── App.tsx
+└── package.json
 ```
 
 ---
 
-## 📚 RESOURCES
+## 🔗 API INTEGRATION
 
-- [Expo Sensors Docs](https://docs.expo.dev/versions/latest/sdk/sensors/)
-- [Expo Location](https://docs.expo.dev/versions/latest/sdk/location/)
-- [React Native Maps](https://github.com/react-native-maps/react-native-maps)
-- [Auth0 React Native](https://auth0.com/docs/quickstart/native/react-native)
+**Auth:**
+- POST /api/auth/register
+- POST /api/auth/login
+
+**User & XP:**
+- GET /api/xp/me
+- GET /api/stats/user/:id
+
+**Drive Sessions:**
+- POST /api/drives/start
+- POST /api/drives/update
+- POST /api/drives/end
+
+**Exploration:**
+- GET /api/exploration/cells
+- GET /api/exploration/stats
+
+**Achievements:**
+- GET /api/achievements/me
+- GET /api/achievements/progress
+
+**Leaderboards:**
+- GET /api/leaderboard/daily
+- GET /api/leaderboard/weekly
+- GET /api/leaderboard/monthly
+- GET /api/leaderboard/all-time
+- GET /api/leaderboard/me
+
+**Rewards:**
+- GET /api/rewards
+- POST /api/rewards/redeem
+- GET /api/rewards/me
+
+**Potholes:**
+- POST /api/events
+- GET /api/potholes/nearby
+- POST /api/verify/photo
 
 ---
 
-**Vukašine, srećno! 💪 Testiraj na stvarnom iPhone-u što prije, jer senzori ne rade u simulatoru!**
+## 🎨 UI/UX GUIDELINES
+
+**Design System:**
+- Colors:
+  - Primary: Blue (#007AFF)
+  - Success: Green (#10B981)
+  - Warning: Yellow (#F59E0B)
+  - Danger: Red (#EF4444)
+  - Background: White (#FFFFFF)
+  - Secondary: Gray (#F5F5F7)
+- Fonts:
+  - iOS: San Francisco (system default)
+  - Android: Roboto (system default)
+- Spacing: 8px base unit
+- Border radius: 12px for cards, 8px for buttons
+- Shadows: Subtle elevation (iOS style)
+
+**Animations:**
+- Level up: Confetti + badge grow/spin (1s)
+- XP gain: Number fly-up + bar fill (0.5s)
+- Achievement unlock: Lock break + card flip (0.8s)
+- Screen transitions: Fade/slide (0.3s)
+
+---
+
+## 🚀 SUCCESS METRICS
+
+- Onboarding completion rate > 80%
+- Drive mode detection accuracy > 85%
+- Post-drive summary XP calculations match backend
+- Fog of war map renders smoothly (60 FPS)
+- Real-time alerts arrive within 2 seconds
+- App crash rate < 1%
+- Battery drain < 10% per hour during drive
+- User engagement (daily active users)
+
+---
+
+**Vukašine, srećno! 💪 Focus on onboarding → home → drive mode → profile first! Test on real device early!**
