@@ -6,7 +6,11 @@ import { DetectionService } from '../services/detectionService';
 import { APIService } from '../services/apiService';
 import type { AccelerometerMeasurement, GyroscopeMeasurement } from 'expo-sensors';
 
-export default function SensorDebugScreen({ navigation }: any) {
+interface SensorDebugScreenProps {
+  onBack: () => void;
+}
+
+export default function SensorDebugScreen({ onBack }: SensorDebugScreenProps) {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [testMode, setTestMode] = useState(false); // Test mode bypasses speed check
 
@@ -187,7 +191,7 @@ export default function SensorDebugScreen({ navigation }: any) {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={onBack}
           style={styles.backButton}
         >
           <Text style={styles.backButtonText}>← Back</Text>

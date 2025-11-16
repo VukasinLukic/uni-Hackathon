@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
@@ -10,66 +9,100 @@ import {
   StatusBar,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
-import { COLORS } from '../utils/colors';
-import { FONTS } from '../utils/typography';
-import { AvatarSelector, getAvatarEmoji } from '../components/AvatarSelector';
-import { useAuth0 } from '../contexts/Auth0Context';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || 'http://10.0.10.156:7392';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface ProfileScreenProps {
   onBack?: () => void;
 }
 
+// Helper to get avatar image
+const getAvatarImage = (avatarNumber: number = 1) => {
+  const avatarImages: { [key: number]: any } = {
+    1: require('../../assets/images/1.png'),
+    2: require('../../assets/images/2.png'),
+    3: require('../../assets/images/3.png'),
+    4: require('../../assets/images/4.png'),
+    5: require('../../assets/images/5.png'),
+    6: require('../../assets/images/6.png'),
+    7: require('../../assets/images/7.png'),
+    8: require('../../assets/images/8.png'),
+    9: require('../../assets/images/9.png'),
+    10: require('../../assets/images/10.png'),
+    11: require('../../assets/images/11.png'),
+    12: require('../../assets/images/12.png'),
+    13: require('../../assets/images/13.png'),
+    14: require('../../assets/images/14.png'),
+    15: require('../../assets/images/15.png'),
+    16: require('../../assets/images/16.png'),
+    17: require('../../assets/images/17.png'),
+    18: require('../../assets/images/18.png'),
+    19: require('../../assets/images/19.png'),
+    20: require('../../assets/images/20.png'),
+    21: require('../../assets/images/21.png'),
+    22: require('../../assets/images/22.png'),
+  };
+  return avatarImages[avatarNumber] || avatarImages[1];
+};
+
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
-  const { accessToken, isAuthenticated, login } = useAuth0();
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigation = useNavigation<NavigationProp>();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   // Profile data
-  const [name, setName] = useState('');
-  const [bio, setBio] = useState('');
-  const [phone, setPhone] = useState('');
   const [avatarNumber, setAvatarNumber] = useState(1);
+  const [username, setUsername] = useState('');
+  const [userId, setUserId] = useState('');
 
   // Stats
-  const [level, setLevel] = useState(1);
-  const [xp, setXp] = useState(0);
-  const [stats, setStats] = useState({
-    distanceDriven: 0,
-    cellsExplored: 0,
-    potholesDetected: 0,
-  });
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [currentPosition, setCurrentPosition] = useState(0);
+  const [cityExplored, setCityExplored] = useState(0);
+  const [hoursDriven, setHoursDriven] = useState(0);
+  const [streetsThisWeek, setStreetsThisWeek] = useState(0);
+  const [highestPosition, setHighestPosition] = useState(1);
 
   // Fetch profile on mount
   useEffect(() => {
     fetchProfile();
-  }, [accessToken]);
+    fetchLeaderboardPosition();
+  }, [user]);
 
   const fetchProfile = async () => {
     try {
       setLoading(true);
 
-      if (!accessToken) {
+      if (!isAuthenticated || !user) {
         Alert.alert(
           'Not Authenticated',
           'Please log in to view your profile.',
-          [
-            { text: 'Cancel', style: 'cancel', onPress: () => onBack?.() },
-            { text: 'Log In', onPress: () => login() },
-          ]
+          [{ text: 'OK', style: 'cancel', onPress: () => onBack?.() }]
         );
         setLoading(false);
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/users/profile`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      // Get user ID from AsyncStorage
+      const storedUserId = await AsyncStorage.getItem('@user_id');
+
+      if (!storedUserId) {
+        throw new Error('User ID not found');
+      }
+
+      setUserId(storedUserId);
+
+      const response = await fetch(`${API_URL}/api/users/profile/${storedUserId}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch profile');
@@ -78,17 +111,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
       const data = await response.json();
 
       if (data.success && data.user) {
-        setName(data.user.name || '');
-        setBio(data.user.bio || '');
-        setPhone(data.user.phone || '');
         setAvatarNumber(data.user.avatarNumber || 1);
-        setLevel(data.user.level || 1);
-        setXp(data.user.currentXP || 0);
-        setStats({
-          distanceDriven: data.user.stats?.distanceDriven || 0,
-          cellsExplored: data.user.stats?.cellsExplored || 0,
-          potholesDetected: data.user.stats?.potholesDetected || 0,
-        });
+        setUsername(data.user.username || data.user.licensePlate || 'Player');
+        setTotalPoints(data.user.totalXP || 0);
+        setCityExplored(Math.round(data.user.stats?.explorationPercentage || 0));
+
+        // Convert distance from km to hours (assuming average speed of 30km/h)
+        const distanceKm = data.user.stats?.distanceDriven || 0;
+        const estimatedHours = Math.round(distanceKm / 30);
+        setHoursDriven(estimatedHours);
+
+        setStreetsThisWeek(data.user.stats?.cellsExplored || 0);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -98,51 +131,89 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
     }
   };
 
-  const handleSave = async () => {
+  const fetchLeaderboardPosition = async () => {
     try {
-      setSaving(true);
-
-      if (!accessToken) {
-        Alert.alert('Error', 'Not authenticated. Please log in.');
-        return;
-      }
-
-      const response = await fetch(`${API_URL}/api/users/profile`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          name,
-          bio,
-          phone,
-          avatarNumber,
-        }),
-      });
+      const response = await fetch(`${API_URL}/api/users/leaderboard?limit=100`);
 
       if (!response.ok) {
-        throw new Error('Failed to update profile');
+        console.warn('Failed to fetch leaderboard');
+        return;
       }
 
       const data = await response.json();
 
-      if (data.success) {
-        Alert.alert('Success', 'Profile updated successfully!');
+      if (data.success && data.leaderboard) {
+        // Find current user's position
+        const userEntry = data.leaderboard.find((entry: any) =>
+          entry.licensePlate === user?.licensePlate
+        );
+
+        if (userEntry) {
+          setCurrentPosition(userEntry.rank);
+
+          // Track highest position achieved
+          const storedHighest = await AsyncStorage.getItem('@highest_position');
+          if (storedHighest) {
+            const highest = parseInt(storedHighest);
+            if (userEntry.rank < highest) {
+              setHighestPosition(userEntry.rank);
+              await AsyncStorage.setItem('@highest_position', userEntry.rank.toString());
+            } else {
+              setHighestPosition(highest);
+            }
+          } else {
+            setHighestPosition(userEntry.rank);
+            await AsyncStorage.setItem('@highest_position', userEntry.rank.toString());
+          }
+        }
       }
     } catch (error) {
-      console.error('Error saving profile:', error);
-      Alert.alert('Error', 'Failed to save profile');
-    } finally {
-      setSaving(false);
+      console.error('Error fetching leaderboard position:', error);
     }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              // Navigate back or to welcome screen
+              if (onBack) {
+                onBack();
+              } else {
+                navigation.navigate('Welcome');
+              }
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to logout');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handlePrizesPress = () => {
+    // TODO: Navigate to rewards/prizes screen
+    Alert.alert('Coming Soon', 'Prizes and rewards feature coming soon!');
+  };
+
+  const handleSettingsPress = () => {
+    navigation.navigate('Settings');
   };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color="#FFFFFF" />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
       </SafeAreaView>
@@ -154,104 +225,88 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
       <StatusBar barStyle="light-content" />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
+        {/* Header Section with Pale Yellow Background */}
         <View style={styles.header}>
-          {onBack && (
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-              <Text style={styles.backButtonText}>← Back</Text>
-            </TouchableOpacity>
-          )}
-          <Text style={styles.headerTitle}>My Profile</Text>
-          <Text style={styles.headerSubtitle}>Customize your PavePatrol identity</Text>
-        </View>
+          {/* Settings Gear Icon */}
+          <TouchableOpacity style={styles.settingsButton} onPress={handleSettingsPress}>
+            <Text style={styles.settingsIcon}>⚙️</Text>
+          </TouchableOpacity>
 
-        {/* Avatar Display */}
-        <View style={styles.avatarDisplay}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarEmojiLarge}>{getAvatarEmoji(avatarNumber)}</Text>
-          </View>
-          <View style={styles.levelBadge}>
-            <Text style={styles.levelText}>Level {level}</Text>
+          {/* Pixel Avatar */}
+          <View style={styles.avatarContainer}>
+            <Image source={getAvatarImage(avatarNumber)} style={styles.avatarImage} />
           </View>
         </View>
 
-        {/* XP Progress */}
-        <View style={styles.xpContainer}>
-          <View style={styles.xpBar}>
-            <View style={[styles.xpProgress, { width: `${(xp % 500) / 5}%` }]} />
-          </View>
-          <Text style={styles.xpText}>{xp} / {Math.ceil(xp / 500) * 500} XP</Text>
+        {/* Username and Tag */}
+        <View style={styles.userInfo}>
+          <Text style={styles.username}>{username}</Text>
+          <Text style={styles.userTag}>KŠ-{userId.slice(-6).toUpperCase()}</Text>
         </View>
 
-        {/* Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{stats.distanceDriven.toFixed(1)} km</Text>
-            <Text style={styles.statLabel}>Distance</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{stats.cellsExplored}</Text>
-            <Text style={styles.statLabel}>Cells</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{stats.potholesDetected}</Text>
-            <Text style={styles.statLabel}>Discoveries</Text>
-          </View>
-        </View>
-
-        {/* Avatar Selector */}
-        <AvatarSelector selectedAvatar={avatarNumber} onSelectAvatar={setAvatarNumber} />
-
-        {/* Profile Form */}
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Name</Text>
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Enter your name"
-              placeholderTextColor={COLORS.text.tertiary}
-            />
+        {/* Overview Section - Two Pills */}
+        <Text style={styles.sectionTitle}>Overview</Text>
+        <View style={styles.overviewRow}>
+          <View style={styles.statCard}>
+            <View style={styles.statIconContainer}>
+              <Text style={styles.statIconLarge}>💰</Text>
+            </View>
+            <Text style={styles.statValue}>{totalPoints}</Text>
+            <Text style={styles.statLabel}>total points</Text>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Bio</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={bio}
-              onChangeText={setBio}
-              placeholder="Tell us about yourself"
-              placeholderTextColor={COLORS.text.tertiary}
-              multiline
-              numberOfLines={4}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone</Text>
-            <TextInput
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="Enter your phone number"
-              placeholderTextColor={COLORS.text.tertiary}
-              keyboardType="phone-pad"
-            />
+          <View style={styles.statCard}>
+            <View style={styles.statIconContainer}>
+              <Text style={styles.statIconLarge}>🏆</Text>
+            </View>
+            <Text style={styles.statValue}>#{currentPosition}</Text>
+            <Text style={styles.statLabel}>current position</Text>
           </View>
         </View>
 
-        {/* Save Button */}
-        <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save Profile</Text>
-          )}
+        {/* Achievements Section - 2x2 Grid */}
+        <Text style={styles.sectionTitle}>Achievements</Text>
+        <View style={styles.achievementsGrid}>
+          <View style={styles.achievementCard}>
+            <View style={styles.achievementIconContainer}>
+              <Text style={styles.achievementIcon}>🗺️</Text>
+            </View>
+            <Text style={styles.achievementValue}>{cityExplored}%</Text>
+            <Text style={styles.achievementLabel}>city explored</Text>
+          </View>
+
+          <View style={styles.achievementCard}>
+            <View style={styles.achievementIconContainer}>
+              <Text style={styles.achievementIcon}>⏱️</Text>
+            </View>
+            <Text style={styles.achievementValue}>{hoursDriven}</Text>
+            <Text style={styles.achievementLabel}>hours driven</Text>
+          </View>
+
+          <View style={styles.achievementCard}>
+            <View style={styles.achievementIconContainer}>
+              <Text style={styles.achievementIcon}>🛣️</Text>
+            </View>
+            <Text style={styles.achievementValue}>{streetsThisWeek}</Text>
+            <Text style={styles.achievementLabel}>streets this week</Text>
+          </View>
+
+          <View style={styles.achievementCard}>
+            <View style={styles.achievementIconContainer}>
+              <Text style={styles.achievementIcon}>🥇</Text>
+            </View>
+            <Text style={styles.achievementValue}>#{highestPosition}</Text>
+            <Text style={styles.achievementLabel}>highest position</Text>
+          </View>
+        </View>
+
+        {/* CTA Buttons */}
+        <TouchableOpacity style={styles.prizesButton} onPress={handlePrizesPress}>
+          <Text style={styles.prizesButtonText}>YOUR PRIZES</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutButtonText}>log out</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -261,7 +316,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background.primary,
+    backgroundColor: '#111111',
   },
   loadingContainer: {
     flex: 1,
@@ -271,152 +326,184 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    fontFamily: FONTS.body,
-    color: COLORS.text.secondary,
+    fontFamily: 'Bakbak-One',
+    color: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    paddingBottom: 40,
   },
   header: {
-    marginBottom: 24,
-  },
-  backButton: {
-    marginBottom: 16,
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontFamily: FONTS.body,
-    color: COLORS.primary,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontFamily: FONTS.heading,
-    color: COLORS.text.primary,
-    marginBottom: 8,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    fontFamily: FONTS.body,
-    color: COLORS.text.secondary,
-  },
-  avatarDisplay: {
-    alignItems: 'center',
-    marginBottom: 16,
+    backgroundColor: '#D9E06A',
+    height: 140,
     position: 'relative',
-  },
-  avatarCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: COLORS.background.secondary,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
-    borderColor: COLORS.primary,
+    paddingHorizontal: 20,
   },
-  avatarEmojiLarge: {
-    fontSize: 64,
-  },
-  levelBadge: {
+  settingsButton: {
     position: 'absolute',
-    bottom: 0,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  levelText: {
-    fontSize: 14,
-    fontFamily: FONTS.button,
-    color: '#FFFFFF',
-  },
-  xpContainer: {
-    marginBottom: 24,
-  },
-  xpBar: {
-    height: 8,
-    backgroundColor: COLORS.background.secondary,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  xpProgress: {
-    height: '100%',
-    backgroundColor: COLORS.primary,
-  },
-  xpText: {
-    marginTop: 8,
-    fontSize: 14,
-    fontFamily: FONTS.body,
-    color: COLORS.text.secondary,
-    textAlign: 'center',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: COLORS.background.secondary,
-    padding: 16,
-    borderRadius: 12,
-    marginHorizontal: 4,
+    top: 20,
+    right: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  statValue: {
+  settingsIcon: {
+    fontSize: 28,
+  },
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 4,
+    borderColor: '#000000',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  userInfo: {
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  username: {
+    fontSize: 32,
+    fontFamily: 'Bakbak-One',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  userTag: {
+    fontSize: 16,
+    fontFamily: 'Bakbak-One',
+    color: '#888888',
+    letterSpacing: 1.5,
+  },
+  sectionTitle: {
     fontSize: 20,
-    fontFamily: FONTS.heading,
-    color: COLORS.text.primary,
+    fontFamily: 'Bakbak-One',
+    color: '#FFFFFF',
+    paddingHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  overviewRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#DCDCDC',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statIconContainer: {
+    marginBottom: 8,
+  },
+  statIconLarge: {
+    fontSize: 32,
+  },
+  statValue: {
+    fontSize: 28,
+    fontFamily: 'Bakbak-One',
+    color: '#000000',
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    fontFamily: FONTS.body,
-    color: COLORS.text.secondary,
+    fontFamily: 'Bakbak-One',
+    color: '#666666',
+    textAlign: 'center',
   },
-  form: {
-    marginTop: 24,
+  achievementsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    gap: 12,
+    marginBottom: 32,
   },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontFamily: FONTS.heading,
-    color: COLORS.text.primary,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: COLORS.background.secondary,
+  achievementCard: {
+    width: '48%',
+    backgroundColor: '#DCDCDC',
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    fontFamily: FONTS.body,
-    color: COLORS.text.primary,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  saveButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    padding: 18,
+    padding: 14,
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  saveButtonDisabled: {
-    opacity: 0.6,
+  achievementIconContainer: {
+    marginBottom: 6,
   },
-  saveButtonText: {
+  achievementIcon: {
+    fontSize: 24,
+  },
+  achievementValue: {
+    fontSize: 24,
+    fontFamily: 'Bakbak-One',
+    color: '#000000',
+    marginBottom: 2,
+  },
+  achievementLabel: {
+    fontSize: 11,
+    fontFamily: 'Bakbak-One',
+    color: '#666666',
+    textAlign: 'center',
+  },
+  prizesButton: {
+    marginHorizontal: 20,
+    backgroundColor: '#D9E06A',
+    borderRadius: 42.83,
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 4.28,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  prizesButtonText: {
+    fontSize: 24,
+    fontFamily: 'Gajraj-One',
+    color: '#000000',
+    letterSpacing: 2,
+  },
+  logoutButton: {
+    marginHorizontal: 60,
+    backgroundColor: '#C04A48',
+    borderRadius: 42.83,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#A03836',
+  },
+  logoutButtonText: {
     fontSize: 18,
-    fontFamily: FONTS.button,
+    fontFamily: 'Bakbak-One',
     color: '#FFFFFF',
+    letterSpacing: 1,
   },
 });

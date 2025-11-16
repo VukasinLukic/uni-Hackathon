@@ -1,17 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, StatusBar, Image, Alert, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Location from 'expo-location';
 import Button from '../components/Button';
 import { LocationService } from '../services/locationService';
 import { APIService } from '../services/apiService';
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 interface WalkingModeScreenProps {
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export default function WalkingModeScreen({ onBack }: WalkingModeScreenProps) {
+  const navigation = useNavigation<NavigationProp>();
   const [permission, requestPermission] = useCameraPermissions();
   const [photo, setPhoto] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,6 +87,14 @@ export default function WalkingModeScreen({ onBack }: WalkingModeScreenProps) {
     setPhoto(null);
   };
 
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigation.goBack();
+    }
+  };
+
   const submitReport = async () => {
     if (!photo || !location) {
       Alert.alert('Error', 'Missing photo or location');
@@ -126,7 +140,7 @@ export default function WalkingModeScreen({ onBack }: WalkingModeScreenProps) {
             text: 'OK',
             onPress: () => {
               setPhoto(null);
-              onBack();
+              handleBack();
             },
           },
         ]
@@ -162,7 +176,7 @@ export default function WalkingModeScreen({ onBack }: WalkingModeScreenProps) {
           <Text style={styles.errorText}>
             Please enable camera access in your device settings to use Walking Mode.
           </Text>
-          <Button title="Go Back" onPress={onBack} variant="primary" style={{ marginTop: 24 }} />
+          <Button title="Go Back" onPress={handleBack} variant="primary" style={{ marginTop: 24 }} />
         </View>
       </SafeAreaView>
     );
@@ -280,7 +294,7 @@ export default function WalkingModeScreen({ onBack }: WalkingModeScreenProps) {
         {/* Header */}
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.cameraHeader}>
-            <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
               <Text style={styles.backButtonText}>← Back</Text>
             </TouchableOpacity>
             <Text style={styles.cameraTitle}>Walking Mode</Text>

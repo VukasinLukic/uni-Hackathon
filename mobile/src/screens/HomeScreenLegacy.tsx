@@ -3,12 +3,13 @@ import { View, Text, StyleSheet, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/Button';
 
-interface HomeScreenProps {
-  onDrivingMode: () => void;
-  onWalkingMode: () => void;
+interface HomeScreenLegacyProps {
+  onBack?: () => void;
+  onDrivingMode?: () => void;
+  onWalkingMode?: () => void;
 }
 
-export default function HomeScreen({ onDrivingMode, onWalkingMode }: HomeScreenProps) {
+export default function HomeScreenLegacy({ onBack, onDrivingMode, onWalkingMode }: HomeScreenLegacyProps) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -16,6 +17,14 @@ export default function HomeScreen({ onDrivingMode, onWalkingMode }: HomeScreenP
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
+          {onBack && (
+            <Button
+              title="← Back"
+              variant="outline"
+              onPress={onBack}
+              style={styles.backButton}
+            />
+          )}
           <Text style={styles.title}>RoadSense</Text>
           <Text style={styles.subtitle}>Pothole Detection System</Text>
         </View>
@@ -30,7 +39,7 @@ export default function HomeScreen({ onDrivingMode, onWalkingMode }: HomeScreenP
               title="Driving Mode"
               icon="🚗"
               variant="primary"
-              onPress={onDrivingMode}
+              onPress={onDrivingMode || (() => console.log('Driving mode not configured'))}
               style={styles.modeButton}
             />
 
@@ -39,7 +48,7 @@ export default function HomeScreen({ onDrivingMode, onWalkingMode }: HomeScreenP
               title="Walking Mode"
               icon="🚶"
               variant="secondary"
-              onPress={onWalkingMode}
+              onPress={onWalkingMode || (() => console.log('Walking mode not configured'))}
               style={styles.modeButton}
             />
           </View>
@@ -86,6 +95,12 @@ const styles = StyleSheet.create({
   header: {
     marginTop: 40,
     marginBottom: 40,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginBottom: 20,
   },
   title: {
     fontSize: 40,

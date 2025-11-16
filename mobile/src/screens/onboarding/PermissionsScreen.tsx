@@ -1,98 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
-  ScrollView,
+  ImageBackground,
+  Dimensions,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../navigation/AppNavigator';
 import * as Location from 'expo-location';
 import { Camera } from 'expo-camera';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface Permission {
-  id: string;
-  icon: string;
-  title: string;
-  description: string;
-  why: string;
-  required: boolean;
-  granted: boolean;
-}
+const { width } = Dimensions.get('window');
+
+type PermissionsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Permissions'>;
 
 interface PermissionsScreenProps {
-  onComplete: () => void;
+  onComplete?: () => void;
 }
 
 export default function PermissionsScreen({ onComplete }: PermissionsScreenProps) {
-  const initialPermissions: Permission[] = [
-    {
-      id: 'location',
-      icon: '📍',
-      title: 'Location Access',
-      description: 'Foreground & Background',
-      why: 'Track your drive and detect potholes automatically while you explore the city.',
-      required: true,
-      granted: false,
-    },
-    {
-      id: 'motion',
-      icon: '📳',
-      title: 'Motion Sensors',
-      description: 'Accelerometer & Gyroscope',
-      why: 'Detect road bumps and potholes using your phone motion sensors.',
-      required: true,
-      granted: false,
-    },
-    {
-      id: 'camera',
-      icon: '📷',
-      title: 'Camera Access',
-      description: 'For Walking Mode',
-      why: 'Take photos of potholes manually in Walking Mode for better verification.',
-      required: false,
-      granted: false,
-    },
-  ];
-
-  const [permissions, setPermissions] = useState(initialPermissions);
+  const navigation = useNavigation<PermissionsScreenNavigationProp>();
   const [isRequesting, setIsRequesting] = useState(false);
+
+  // Animations
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Popup entrance animation
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const requestLocationPermission = async () => {
     try {
-      // EXPO GO MODE: Simulate permission grant (Expo Go doesn't support custom Info.plist)
-      // Real permissions will work in standalone build
+      // EXPO GO MODE: Simulate permission grant
       console.log('⚠️ Expo Go detected - simulating location permission grant');
       await new Promise(resolve => setTimeout(resolve, 800));
       return true;
-
-      /*
-      // TODO: Uncomment when building standalone app (eas build)
-      const { status: foregroundStatus } =
-        await Location.requestForegroundPermissionsAsync();
-
-      if (foregroundStatus !== 'granted') {
-        Alert.alert(
-          'Permission Denied',
-          'Location permission is required to use PavePatrol. Please enable it in settings.'
-        );
-        return false;
-      }
-
-      const { status: backgroundStatus } =
-        await Location.requestBackgroundPermissionsAsync();
-
-      if (backgroundStatus !== 'granted') {
-        Alert.alert(
-          'Background Location',
-          'Background location helps detect potholes even when the app is in background. You can enable it later in settings.'
-        );
-      }
-
-      return true;
-      */
     } catch (error) {
       console.error('Location permission error:', error);
       return false;
@@ -105,12 +68,6 @@ export default function PermissionsScreen({ onComplete }: PermissionsScreenProps
       console.log('⚠️ Expo Go detected - simulating camera permission grant');
       await new Promise(resolve => setTimeout(resolve, 500));
       return true;
-
-      /*
-      // TODO: Uncomment when building standalone app
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      return status === 'granted';
-      */
     } catch (error) {
       console.error('Camera permission error:', error);
       return false;
@@ -123,21 +80,38 @@ export default function PermissionsScreen({ onComplete }: PermissionsScreenProps
     try {
       // Location (required)
       const locationGranted = await requestLocationPermission();
-      updatePermissionStatus('location', locationGranted);
-
-      // Motion sensors are automatically available (no permission needed on modern devices)
-      updatePermissionStatus('motion', true);
 
       // Camera (optional)
       const cameraGranted = await requestCameraPermission();
-      updatePermissionStatus('camera', cameraGranted);
 
-      // Check if all required permissions are granted
-      const allRequiredGranted = locationGranted; // motion is always true
-
-      if (allRequiredGranted) {
+      if (locationGranted) {
         console.log('✅ All required permissions granted');
-        setTimeout(() => onComplete(), 500);
+
+        // Exit animation
+        Animated.parallel([
+          Animated.spring(scaleAnim, {
+            toValue: 0,
+            tension: 50,
+            friction: 7,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]).start(async () => {
+          // Mark onboarding as completed
+          await AsyncStorage.setItem('@onboarding_completed', 'true');
+
+          setTimeout(() => {
+            if (onComplete) {
+              onComplete();
+            } else {
+              navigation.navigate('Home');
+            }
+          }, 100);
+        });
       } else {
         Alert.alert(
           'Required Permissions',
@@ -156,221 +130,164 @@ export default function PermissionsScreen({ onComplete }: PermissionsScreenProps
     }
   };
 
-  const updatePermissionStatus = (id: string, granted: boolean) => {
-    setPermissions((prev) =>
-      prev.map((perm) => (perm.id === id ? { ...perm, granted } : perm))
-    );
+  const handleNo = () => {
+    Alert.alert('Permission Required', 'Location is required to use this app.');
   };
 
-  const renderPermissionCard = (permission: Permission) => (
-    <View key={permission.id} style={styles.permissionCard}>
-      <View style={styles.permissionHeader}>
-        <View style={styles.iconContainer}>
-          <Text style={styles.permissionIcon}>{permission.icon}</Text>
-        </View>
-        <View style={styles.permissionInfo}>
-          <View style={styles.permissionTitleRow}>
-            <Text style={styles.permissionTitle}>{permission.title}</Text>
-            {permission.required && (
-              <View style={styles.requiredBadge}>
-                <Text style={styles.requiredBadgeText}>Required</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.permissionDescription}>{permission.description}</Text>
-        </View>
-        {permission.granted && (
-          <View style={styles.grantedIndicator}>
-            <Text style={styles.grantedIndicatorText}>✓</Text>
-          </View>
-        )}
-      </View>
-      <Text style={styles.permissionWhy}>💡 {permission.why}</Text>
-    </View>
-  );
-
   return (
-    <LinearGradient colors={['#071E35', '#0A2942']} style={styles.container}>
+    <ImageBackground
+      source={require('../../../assets/images/image-4.png')}
+      style={styles.background}
+      resizeMode="cover"
+      blurRadius={2}
+    >
       <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Permissions</Text>
-          <Text style={styles.subtitle}>
-            We need a few permissions to make PavePatrol work smoothly
-          </Text>
-        </View>
+        <View style={styles.container}>
+          {/* Popup Card with Animation */}
+          <Animated.View
+            style={[
+              styles.card,
+              {
+                transform: [{ scale: scaleAnim }],
+                opacity: fadeAnim,
+              },
+            ]}
+          >
+            {/* Location Icon */}
+            <View style={styles.iconContainer}>
+              <Text style={styles.icon}>📍</Text>
+            </View>
 
-        {/* Permissions List */}
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {permissions.map((permission) => renderPermissionCard(permission))}
+            {/* Title */}
+            <Text style={styles.title}>Location</Text>
 
-          {/* Privacy Notice */}
-          <View style={styles.privacyNotice}>
-            <Text style={styles.privacyIcon}>🔒</Text>
-            <Text style={styles.privacyText}>
-              Your privacy matters. We only use your data for pothole detection and never share it
-              with third parties.
+            {/* Description */}
+            <Text style={styles.description}>
+              Location permission is needed to give us your location
             </Text>
-          </View>
-        </ScrollView>
 
-        {/* Allow All Button */}
-        <TouchableOpacity
-          style={[styles.allowButton, isRequesting && styles.allowButtonDisabled]}
-          onPress={requestAllPermissions}
-          disabled={isRequesting}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.allowButtonText}>
-            {isRequesting ? 'Requesting...' : 'Allow All Permissions'}
-          </Text>
-        </TouchableOpacity>
+            {/* Buttons */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={styles.noButton}
+                onPress={handleNo}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.noButtonText}>nooo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.yesButton, isRequesting && styles.buttonDisabled]}
+                onPress={requestAllPermissions}
+                disabled={isRequesting}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.yesButtonText}>
+                  {isRequesting ? 'yessiir...' : 'yessirski'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
       </SafeAreaView>
-    </LinearGradient>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
     flex: 1,
+    width: '100%',
+    height: '100%',
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: 24,
   },
-  header: {
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 17,
-    color: '#FFFFFF',
-    opacity: 0.8,
-    lineHeight: 24,
-  },
-  scrollView: {
+  container: {
     flex: 1,
-  },
-  permissionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-  },
-  permissionHeader: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    paddingHorizontal: 30,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Darker overlay
+  },
+  card: {
+    backgroundColor: '#E8F34F',
+    borderRadius: 24,
+    padding: 30,
+    width: width - 100, // Smaller card
+    maxWidth: 320,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 15,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  permissionIcon: {
-    fontSize: 28,
-  },
-  permissionInfo: {
-    flex: 1,
-  },
-  permissionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    gap: 8,
-  },
-  permissionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  requiredBadge: {
-    backgroundColor: '#FF9800',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  requiredBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  permissionDescription: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    opacity: 0.7,
-  },
-  grantedIndicator: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#4CAF50',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  grantedIndicatorText: {
-    fontSize: 18,
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  permissionWhy: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    opacity: 0.8,
-    lineHeight: 20,
-    fontStyle: 'italic',
-  },
-  privacyNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(76, 175, 80, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(76, 175, 80, 0.3)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    gap: 12,
-  },
-  privacyIcon: {
-    fontSize: 24,
-  },
-  privacyText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#FFFFFF',
-    lineHeight: 20,
-  },
-  allowButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#FFFFFF',
-    paddingVertical: 18,
-    borderRadius: 30,
-    marginVertical: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 6,
   },
-  allowButtonDisabled: {
-    opacity: 0.6,
+  icon: {
+    fontSize: 48,
   },
-  allowButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#071E35',
+  title: {
+    fontFamily: 'Bakbak-One',
+    fontSize: 28,
+    color: '#0A1F3D',
+    marginBottom: 12,
     textAlign: 'center',
+  },
+  description: {
+    fontFamily: 'Bakbak-One',
+    fontSize: 14,
+    color: '#0A1F3D',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 28,
+    opacity: 0.8,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  noButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#0A1F3D',
+  },
+  noButtonText: {
+    fontFamily: 'Bakbak-One',
+    fontSize: 16,
+    color: '#0A1F3D',
+    textAlign: 'center',
+  },
+  yesButton: {
+    flex: 1,
+    backgroundColor: '#0A1F3D',
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  yesButtonText: {
+    fontFamily: 'Bakbak-One',
+    fontSize: 16,
+    color: '#E8F34F',
+    textAlign: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
 });

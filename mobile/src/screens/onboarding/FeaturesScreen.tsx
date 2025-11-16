@@ -7,57 +7,47 @@ import {
   FlatList,
   TouchableOpacity,
   Animated,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../../navigation/AppNavigator';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+type FeaturesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Features'>;
 
 interface Feature {
   id: string;
-  icon: string;
-  title: string;
-  description: string;
-  color: string;
+  image: any;
 }
 
 interface FeaturesScreenProps {
-  onNext: () => void;
-  onSkip: () => void;
+  onNext?: () => void;
 }
 
 const FEATURES: Feature[] = [
   {
     id: '1',
-    icon: '🚗',
-    title: 'Otkrij grad vožnjom',
-    description: 'Vozi se gradom i automatski prikupljaj podatke senzorima. Bez ručnog unosa!',
-    color: '#4CAF50',
+    image: require('../../../assets/images/Intro 6.png'),
   },
   {
     id: '2',
-    icon: '🗺️',
-    title: 'Oslobodi mapu',
-    description: 'Istražuj grad i otkrivaj nove oblasti. Prati svoj progres dok se krećeš!',
-    color: '#2196F3',
+    image: require('../../../assets/images/Intro 7.png'),
   },
   {
     id: '3',
-    icon: '🏆',
-    title: 'Sakupljaj XP i nagrade',
-    description: 'Stiči XP, otključavaj postignuća, penjaj se na leaderboard-u i osvajaj prave nagrade!',
-    color: '#FF9800',
+    image: require('../../../assets/images/Intro 8.png'),
   },
   {
     id: '4',
-    icon: '🎯',
-    title: 'Postani najbolji istraživač',
-    description: 'Takmiči se sa drugima, osvoji svoj grad i postani Top istraživač!',
-    color: '#9C27B0',
+    image: require('../../../assets/images/Intro 9.png'),
   },
 ];
 
-export default function FeaturesScreen({ onNext, onSkip }: FeaturesScreenProps) {
+export default function FeaturesScreen({ onNext }: FeaturesScreenProps) {
+  const navigation = useNavigation<FeaturesScreenNavigationProp>();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
@@ -79,35 +69,22 @@ export default function FeaturesScreen({ onNext, onSkip }: FeaturesScreenProps) 
         animated: true,
       });
     } else {
-      onNext();
+      if (onNext) {
+        onNext();
+      } else {
+        navigation.navigate('Auth');
+      }
     }
   };
 
-  const renderFeatureCard = ({ item, index }: { item: Feature; index: number }) => {
-    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
-
-    const scale = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.8, 1, 0.8],
-      extrapolate: 'clamp',
-    });
-
-    const opacity = scrollX.interpolate({
-      inputRange,
-      outputRange: [0.5, 1, 0.5],
-      extrapolate: 'clamp',
-    });
-
+  const renderFeatureCard = ({ item }: { item: Feature }) => {
     return (
       <View style={[styles.cardContainer, { width }]}>
-        <Animated.View style={[styles.card, { transform: [{ scale }], opacity }]}>
-          <View style={[styles.iconContainer, { backgroundColor: item.color }]}>
-            <Text style={styles.icon}>{item.icon}</Text>
-          </View>
-
-          <Text style={styles.featureTitle}>{item.title}</Text>
-          <Text style={styles.featureDescription}>{item.description}</Text>
-        </Animated.View>
+        <Image
+          source={item.image}
+          style={styles.image}
+          resizeMode="cover"
+        />
       </View>
     );
   };
@@ -146,13 +123,8 @@ export default function FeaturesScreen({ onNext, onSkip }: FeaturesScreenProps) 
   );
 
   return (
-    <LinearGradient colors={['#071E35', '#0A2942']} style={styles.container}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        {/* Skip Button */}
-        <TouchableOpacity style={styles.skipButton} onPress={onSkip} activeOpacity={0.7}>
-          <Text style={styles.skipButtonText}>Skip</Text>
-        </TouchableOpacity>
-
         {/* Features Carousel */}
         <View style={styles.carouselContainer}>
           <FlatList
@@ -186,77 +158,29 @@ export default function FeaturesScreen({ onNext, onSkip }: FeaturesScreenProps) 
           </Text>
         </TouchableOpacity>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: 20,
-  },
-  skipButton: {
-    alignSelf: 'flex-end',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginTop: 10,
-  },
-  skipButtonText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    opacity: 0.7,
   },
   carouselContainer: {
     flex: 1,
-    justifyContent: 'center',
   },
   cardContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 30,
   },
-  card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 24,
-    padding: 40,
-    alignItems: 'center',
+  image: {
     width: '100%',
-    minHeight: 400,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  icon: {
-    fontSize: 64,
-  },
-  featureTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  featureDescription: {
-    fontSize: 17,
-    color: '#FFFFFF',
-    textAlign: 'center',
-    lineHeight: 26,
-    opacity: 0.9,
+    height: '100%',
   },
   paginationContainer: {
     flexDirection: 'row',
@@ -264,6 +188,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
     gap: 8,
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
   },
   paginationDot: {
     height: 10,
@@ -274,12 +202,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingVertical: 18,
     borderRadius: 30,
-    marginBottom: 20,
+    marginHorizontal: 20,
+    marginBottom: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
   },
   nextButtonText: {
     fontSize: 18,
