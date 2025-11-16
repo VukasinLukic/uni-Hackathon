@@ -6,6 +6,7 @@ export interface IUser extends Document {
   email: string;
   username: string;
   password?: string; // Optional for Auth0 users
+  licensePlate?: string; // License plate as username (for mobile users)
   avatarUrl?: string;
   avatarNumber?: number; // 1-5 for predefined avatars
   name?: string;
@@ -41,6 +42,7 @@ const UserSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true, lowercase: true },
     username: { type: String, required: true, unique: true },
     password: { type: String, select: false }, // Not required for Auth0 users
+    licensePlate: { type: String, uppercase: true }, // License plate as username
     avatarUrl: String,
     avatarNumber: { type: Number, min: 1, max: 5 }, // 1-5 predefined avatars
     name: String,

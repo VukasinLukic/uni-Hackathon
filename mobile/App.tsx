@@ -4,7 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { Auth0Provider } from './src/contexts/Auth0Context';
+import { AuthProvider } from './src/contexts/AuthContext';
 
 // Keep splash screen visible while loading fonts
 SplashScreen.preventAutoHideAsync();
@@ -17,15 +17,15 @@ import PermissionsScreen from './src/screens/onboarding/PermissionsScreen';
 
 // Main App Screens (lazy loaded to avoid permission requests before onboarding)
 import HomeScreen from './src/screens/HomeScreen';
-import HomeScreenLegacy from './src/screens/HomeScreenLegacy';
-import TestBackendScreen from './src/screens/TestBackendScreen';
-import ViewGraphsScreen from './src/screens/ViewGraphsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import AchievementsScreen from './src/screens/AchievementsScreen';
+import LeaderboardScreen from './src/screens/LeaderboardScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import PostSessionSummaryScreen from './src/screens/PostSessionSummaryScreen';
 
 // Lazy import screens that use LocationService to prevent early permission requests
 let DrivingModeScreen: any = null;
 let WalkingModeScreen: any = null;
-let TestModeScreen: any = null;
 
 type Screen =
   | 'welcome'
@@ -33,13 +33,13 @@ type Screen =
   | 'auth'
   | 'permissions'
   | 'home'
-  | 'legacyDemo'
   | 'driving'
   | 'walking'
-  | 'testMode'
-  | 'testBackend'
-  | 'viewGraphs'
-  | 'profile';
+  | 'profile'
+  | 'achievements'
+  | 'leaderboard'
+  | 'settings'
+  | 'postSessionSummary';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
@@ -125,13 +125,37 @@ export default function App() {
         );
 
       case 'profile':
-        return <ProfileScreen onBack={() => setCurrentScreen('home')} />;
-
-      case 'legacyDemo':
         return (
-          <HomeScreenLegacy
-            onDrivingMode={() => setCurrentScreen('driving')}
-            onWalkingMode={() => setCurrentScreen('walking')}
+          <ProfileScreen
+            onBack={() => setCurrentScreen('home')}
+          />
+        );
+
+      case 'achievements':
+        return <AchievementsScreen onBack={() => setCurrentScreen('profile')} />;
+
+      case 'leaderboard':
+        return <LeaderboardScreen onBack={() => setCurrentScreen('home')} />;
+
+      case 'settings':
+        return <SettingsScreen onBack={() => setCurrentScreen('profile')} />;
+
+      case 'postSessionSummary':
+        return (
+          <PostSessionSummaryScreen
+            route={{
+              params: {
+                sessionData: {
+                  distance: 5.2,
+                  newCells: 12,
+                  discoveries: 3,
+                  xpBreakdown: { distance: 52, cells: 600, discoveries: 300 },
+                  totalXP: 952,
+                  leveledUp: false,
+                },
+              },
+            }}
+            onContinue={() => setCurrentScreen('home')}
           />
         );
 
@@ -143,10 +167,10 @@ export default function App() {
         return (
           <DrivingModeScreen
             onBack={() => setCurrentScreen('home')}
-            onTestMode={() => setCurrentScreen('testMode')}
-            onTestBackend={() => setCurrentScreen('testBackend')}
-            onViewGraphs={() => setCurrentScreen('viewGraphs')}
-            onLegacyDemo={() => setCurrentScreen('legacyDemo')}
+            onSessionEnd={(sessionData: any) => {
+              // Navigate to summary screen with session data
+              setCurrentScreen('postSessionSummary');
+            }}
           />
         );
 
@@ -161,31 +185,6 @@ export default function App() {
           />
         );
 
-      case 'testMode':
-        // Lazy load TestModeScreen only when needed
-        if (!TestModeScreen) {
-          TestModeScreen = require('./src/screens/TestModeScreen').default;
-        }
-        return (
-          <TestModeScreen
-            onBack={() => setCurrentScreen('driving')}
-          />
-        );
-
-      case 'testBackend':
-        return (
-          <TestBackendScreen
-            onBack={() => setCurrentScreen('driving')}
-          />
-        );
-
-      case 'viewGraphs':
-        return (
-          <ViewGraphsScreen
-            onBack={() => setCurrentScreen('driving')}
-          />
-        );
-
       default:
         return (
           <HomeScreen
@@ -197,11 +196,11 @@ export default function App() {
   };
 
   return (
-    <Auth0Provider>
+    <AuthProvider>
       <SafeAreaProvider>
         <View style={styles.container}>{renderScreen()}</View>
       </SafeAreaProvider>
-    </Auth0Provider>
+    </AuthProvider>
   );
 }
 
