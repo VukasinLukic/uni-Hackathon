@@ -37,7 +37,16 @@
       "Bash(npx expo start)",
       "Bash(timeout:*)",
       "Bash(where:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(temp_clickable.txt)",
+      "Bash(web/src/components/Map/ClickableMarkersMap.tsx)",
+      "Bash(web/src/components/Map/PotholeInfoPanel.tsx)",
+      "Bash(web/src/components/Map/MapFilters.tsx)",
+      "Bash(web/src/components/Map/PotholesSidebar.tsx)",
+      "Bash(web/src/components/Map/ClickableMarkersMap.css)",
+      "Bash(web/src/components/Map/PotholeInfoPanel.css)",
+      "Bash(web/src/components/Map/MapFilters.css)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

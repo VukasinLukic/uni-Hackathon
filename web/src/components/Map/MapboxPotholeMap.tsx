@@ -114,20 +114,22 @@ export default function MapboxPotholeMap({
       };
       img.src = potholeImage;
 
-      // Add HEATMAP layer - ONLY RED COLOR like the image you sent
+      // Add HEATMAP layer - Based on REPORTS COUNT (1 report = weak, 10+ = strongest)
       map.current.addLayer({
         id: 'potholes-heat',
         type: 'heatmap',
         source: 'potholes',
         maxzoom: 20,
         paint: {
-          // Increase the heatmap weight based on severity
+          // Increase the heatmap weight based on REPORTS count (1 report = 0.1, 2 = 0.2, 10+ = 1.0)
           'heatmap-weight': [
             'interpolate',
             ['linear'],
-            ['get', 'severity'],
-            0, 0,
-            10, 1
+            ['get', 'reports'],
+            1, 0.1,   // 1 report = weakest
+            2, 0.2,   // 2 reports = slightly stronger
+            5, 0.5,   // 5 reports = medium
+            10, 1.0   // 10+ reports = strongest
           ],
           // Increase the heatmap intensity by zoom level
           'heatmap-intensity': [
@@ -137,17 +139,17 @@ export default function MapboxPotholeMap({
             0, 1,
             20, 5
           ],
-          // RED/BLUE color ramp like the earthquake map
+          // RED/BLUE color ramp - gradation based on density
           'heatmap-color': [
             'interpolate',
             ['linear'],
             ['heatmap-density'],
             0, 'rgba(0, 0, 0, 0)',           // transparent
-            0.1, 'rgba(0, 100, 255, 0.4)',   // blue glow
-            0.3, 'rgba(100, 150, 255, 0.6)', // light blue
-            0.5, 'rgba(255, 100, 100, 0.7)', // pink/light red
-            0.7, 'rgba(255, 50, 50, 0.85)',  // red
-            1, 'rgba(255, 0, 0, 1)'          // bright red
+            0.1, 'rgba(0, 100, 255, 0.4)',   // blue glow (1 report)
+            0.3, 'rgba(100, 150, 255, 0.6)', // light blue (2-3 reports)
+            0.5, 'rgba(255, 100, 100, 0.7)', // pink/light red (5 reports)
+            0.7, 'rgba(255, 50, 50, 0.85)',  // red (7-9 reports)
+            1, 'rgba(255, 0, 0, 1)'          // bright red (10+ reports)
           ],
           // Smaller radius for better separation
           'heatmap-radius': [

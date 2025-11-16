@@ -166,10 +166,8 @@ export class APIService {
    * POST /api/ai-mission
    */
   static async generateAIMission(missionData: {
-    missionType: 'safety-first' | 'max-coverage' | 'critical-only';
     teams: number;
     workHours: number;
-    constraints: string[];
   }): Promise<any> {
     try {
       const response = await api.post('/ai-mission', missionData);
@@ -187,10 +185,12 @@ export class APIService {
  */
 export async function chatWithGemini(
   message: string,
-  history: Array<{ role: 'user' | 'assistant'; content: string }>
+  history: Array<{ role: 'user' | 'assistant'; content: string }>,
+  userLocation?: { lat: number; lng: number }
 ): Promise<any> {
   try {
-    const response = await api.post('/gemini-chat', { message, history });
+    console.log('🤖 Sending to Gemini:', { message, hasLocation: !!userLocation });
+    const response = await api.post('/gemini-chat', { message, history, userLocation });
     return response.data;
   } catch (error: any) {
     console.error('Failed to chat with Gemini:', error.response?.data || error.message);

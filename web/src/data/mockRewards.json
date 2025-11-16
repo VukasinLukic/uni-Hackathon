@@ -1,0 +1,50 @@
+[
+  {
+    "id": "1",
+    "name": "Free Parking - 1 Month",
+    "description": "One month of free municipal parking",
+    "value": 50
+  },
+  {
+    "id": "2",
+    "name": "Free Parking - 3 Months",
+    "description": "Three months of free municipal parking",
+    "value": 120
+  },
+  {
+    "id": "3",
+    "name": "Gas Voucher - 500 RSD",
+    "description": "500 RSD fuel voucher",
+    "value": 500
+  },
+  {
+    "id": "4",
+    "name": "Gas Voucher - 1000 RSD",
+    "description": "1000 RSD fuel voucher",
+    "value": 1000
+  },
+  {
+    "id": "5",
+    "name": "Car Wash Voucher",
+    "description": "Professional car wash service",
+    "value": 30
+  },
+  {
+    "id": "6",
+    "name": "Municipal Tax Reduction - 10%",
+    "description": "10% reduction on next year's municipal tax",
+    "value": 100
+  },
+  {
+    "id": "7",
+    "name": "Public Transport Pass - 1 Month",
+    "description": "Free public transport for one month",
+    "value": 40
+  },
+  {
+    "id": "8",
+    "name": "Certificate of Appreciation",
+    "description": "Official certificate from the municipality",
+    "value": 0
+  }
+]
