@@ -14,7 +14,8 @@ import {
 import { COLORS } from '../utils/colors';
 import { FONTS } from '../utils/typography';
 import { AvatarSelector, getAvatarEmoji } from '../components/AvatarSelector';
-import { useAuth0 } from '../contexts/Auth0Context';
+import { useAuth } from '../contexts/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || 'http://10.0.10.156:7392';
@@ -24,7 +25,7 @@ interface ProfileScreenProps {
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
-  const { accessToken, isAuthenticated, login } = useAuth0();
+  const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -46,30 +47,30 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
   // Fetch profile on mount
   useEffect(() => {
     fetchProfile();
-  }, [accessToken]);
+  }, [user]);
 
   const fetchProfile = async () => {
     try {
       setLoading(true);
 
-      if (!accessToken) {
+      if (!isAuthenticated || !user) {
         Alert.alert(
           'Not Authenticated',
           'Please log in to view your profile.',
-          [
-            { text: 'Cancel', style: 'cancel', onPress: () => onBack?.() },
-            { text: 'Log In', onPress: () => login() },
-          ]
+          [{ text: 'OK', style: 'cancel', onPress: () => onBack?.() }]
         );
         setLoading(false);
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/users/profile`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      // Get user ID from AsyncStorage
+      const userId = await AsyncStorage.getItem('@user_id');
+
+      if (!userId) {
+        throw new Error('User ID not found');
+      }
+
+      const response = await fetch(`${API_URL}/api/users/profile/${userId}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch profile');
@@ -102,16 +103,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
     try {
       setSaving(true);
 
-      if (!accessToken) {
+      if (!isAuthenticated || !user) {
         Alert.alert('Error', 'Not authenticated. Please log in.');
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/users/profile`, {
+      // Get user ID from AsyncStorage
+      const userId = await AsyncStorage.getItem('@user_id');
+
+      if (!userId) {
+        throw new Error('User ID not found');
+      }
+
+      const response = await fetch(`${API_URL}/api/users/profile/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           name,
@@ -129,6 +136,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
 
       if (data.success) {
         Alert.alert('Success', 'Profile updated successfully!');
+
+        // Update user in AsyncStorage
+        const updatedUser = { ...user, name, avatarNumber };
+        await AsyncStorage.setItem('@user', JSON.stringify(updatedUser));
       }
     } catch (error) {
       console.error('Error saving profile:', error);

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,11 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth0 } from '../../contexts/Auth0Context';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface AuthScreenProps {
   onAuthComplete: () => void;
@@ -18,18 +19,22 @@ interface AuthScreenProps {
 }
 
 export default function AuthScreen({ onAuthComplete, onSkip }: AuthScreenProps) {
-  const { login, isLoading } = useAuth0();
+  const { login, isLoading } = useAuth();
+  const [licensePlate, setLicensePlate] = useState('');
 
-  const handleAuth0Login = async () => {
+  const handleLogin = async () => {
+    if (!licensePlate.trim()) {
+      Alert.alert('Error', 'Please enter your license plate');
+      return;
+    }
+
     try {
-      await login();
-      console.log('✅ Auth0 login successful');
+      await login(licensePlate.trim());
+      console.log('✅ Login successful');
       onAuthComplete();
     } catch (error: any) {
-      console.error('❌ Auth0 login error:', error);
-      if (error.error !== 'a0.session.user_cancelled') {
-        Alert.alert('Error', 'Authentication failed. Please try again.');
-      }
+      console.error('❌ Login error:', error);
+      Alert.alert('Error', 'Login failed. Please try again.');
     }
   };
 
@@ -49,23 +54,35 @@ export default function AuthScreen({ onAuthComplete, onSkip }: AuthScreenProps) 
           {/* Auth Form */}
           <View style={styles.formContainer}>
             <Text style={styles.description}>
-              Sign in with your Auth0 account to access all features and sync your progress
+              Enter your vehicle license plate to continue
             </Text>
 
-            {/* Auth0 Login Button */}
+            {/* License Plate Input */}
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. BG-123-AB"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              value={licensePlate}
+              onChangeText={setLicensePlate}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              editable={!isLoading}
+            />
+
+            {/* Login Button */}
             <TouchableOpacity
               style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
-              onPress={handleAuth0Login}
+              onPress={handleLogin}
               disabled={isLoading}
               activeOpacity={0.8}
             >
               <Text style={styles.submitButtonText}>
-                {isLoading ? 'Opening Auth0...' : 'Sign In with Auth0'}
+                {isLoading ? 'Logging in...' : 'Continue'}
               </Text>
             </TouchableOpacity>
 
             <Text style={styles.infoText}>
-              Secure authentication powered by Auth0
+              Your license plate is your username
             </Text>
 
             {/* Skip Button */}
@@ -171,5 +188,17 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  input: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 18,
+    fontSize: 18,
+    color: '#FFFFFF',
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    textAlign: 'center',
+    fontWeight: '600',
   },
 });
