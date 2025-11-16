@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
 
 interface ActionButtonProps {
-  onTestMode: () => void;
-  onTestBackend: () => void;
-  onViewGraphs: () => void;
+  onTestMode?: () => void;
+  onTestBackend?: () => void;
+  onViewGraphs?: () => void;
   onLegacyDemo?: () => void;
 }
 
@@ -32,14 +32,20 @@ export default function ActionButton({ onTestMode, onTestBackend, onViewGraphs, 
       friction: 5,
       tension: 40,
       useNativeDriver: false,
-    }).start();
-    // Call action immediately
-    action();
+    }).start(() => {
+      // Call action after animation completes
+      action();
+    });
   };
+
+  // Calculate visible items
+  const visibleItems = [onTestMode, onTestBackend, onViewGraphs, onLegacyDemo].filter(Boolean).length;
+  const itemHeight = 68;
+  const maxHeight = visibleItems * itemHeight;
 
   const menuHeight = animation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, onLegacyDemo ? 270 : 200],
+    outputRange: [0, maxHeight],
   });
 
   const rotation = animation.interpolate({
@@ -51,35 +57,41 @@ export default function ActionButton({ onTestMode, onTestBackend, onViewGraphs, 
     <View style={styles.container}>
         {/* Menu Items */}
         <Animated.View style={[styles.menu, { height: menuHeight, opacity: animation }]}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleAction(onTestMode)}
-          >
-            <View style={styles.menuIconContainer}>
-              <Text style={styles.menuIcon}>🧪</Text>
-            </View>
-            <Text style={styles.menuText}>Test Mode</Text>
-          </TouchableOpacity>
+          {onTestMode && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleAction(onTestMode)}
+            >
+              <View style={styles.menuIconContainer}>
+                <Text style={styles.menuIcon}>🧪</Text>
+              </View>
+              <Text style={styles.menuText}>Test Mode</Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleAction(onTestBackend)}
-          >
-            <View style={styles.menuIconContainer}>
-              <Text style={styles.menuIcon}>🔌</Text>
-            </View>
-            <Text style={styles.menuText}>Test Backend</Text>
-          </TouchableOpacity>
+          {onTestBackend && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleAction(onTestBackend)}
+            >
+              <View style={styles.menuIconContainer}>
+                <Text style={styles.menuIcon}>🔌</Text>
+              </View>
+              <Text style={styles.menuText}>Test Backend</Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleAction(onViewGraphs)}
-          >
-            <View style={styles.menuIconContainer}>
-              <Text style={styles.menuIcon}>📊</Text>
-            </View>
-            <Text style={styles.menuText}>View Graphs</Text>
-          </TouchableOpacity>
+          {onViewGraphs && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleAction(onViewGraphs)}
+            >
+              <View style={styles.menuIconContainer}>
+                <Text style={styles.menuIcon}>📊</Text>
+              </View>
+              <Text style={styles.menuText}>View Graphs</Text>
+            </TouchableOpacity>
+          )}
 
           {onLegacyDemo && (
             <TouchableOpacity
@@ -87,9 +99,9 @@ export default function ActionButton({ onTestMode, onTestBackend, onViewGraphs, 
               onPress={() => handleAction(onLegacyDemo)}
             >
               <View style={styles.menuIconContainer}>
-                <Text style={styles.menuIcon}>🎯</Text>
+                <Text style={styles.menuIcon}>📷</Text>
               </View>
-              <Text style={styles.menuText}>Legacy Demo</Text>
+              <Text style={styles.menuText}>Camera Mode</Text>
             </TouchableOpacity>
           )}
         </Animated.View>

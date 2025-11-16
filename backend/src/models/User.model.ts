@@ -42,7 +42,7 @@ const UserSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true, lowercase: true },
     username: { type: String, required: true, unique: true },
     password: { type: String, select: false }, // Not required for Auth0 users
-    licensePlate: { type: String, uppercase: true }, // License plate as username
+    licensePlate: { type: String, uppercase: true, unique: true, sparse: true }, // License plate as username
     avatarUrl: String,
     avatarNumber: { type: Number, min: 1, max: 5 }, // 1-5 predefined avatars
     name: String,

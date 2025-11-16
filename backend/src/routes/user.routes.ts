@@ -4,33 +4,112 @@ import { User } from '../models/User.model';
 
 const router = express.Router();
 
-// POST /api/users/login-plate - Login with license plate (mobile only - no Auth0)
+// POST /api/users/signup - Signup with username and license plate
+router.post('/signup', async (req, res) => {
+  try {
+    const { username, licensePlate } = req.body;
+
+    if (!username || !licensePlate) {
+      return res.status(400).json({ success: false, message: 'Username and license plate required' });
+    }
+
+    // Check if license plate already exists
+    const existingUser = await User.findOne({ licensePlate: licensePlate.toUpperCase() });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'License plate already registered' });
+    }
+
+    // Generate random avatar number 1-5
+    const randomAvatar = Math.floor(Math.random() * 5) + 1;
+
+    // Create unique email using timestamp
+    const uniqueEmail = `${licensePlate.toUpperCase()}-${Date.now()}@pavepatrol.app`;
+
+    const user = await User.create({
+      username: username,
+      licensePlate: licensePlate.toUpperCase(),
+      email: uniqueEmail,
+      auth0Id: `license-${licensePlate.toUpperCase()}-${Date.now()}`, // Generate unique auth0Id for license plate users
+      name: username,
+      role: 'driver',
+      avatarNumber: randomAvatar,
+    });
+
+    res.json({
+      success: true,
+      user: {
+        _id: user._id,
+        username: user.username,
+        licensePlate: user.licensePlate,
+        name: user.name,
+        avatarNumber: user.avatarNumber,
+        level: user.level,
+        currentXP: user.currentXP,
+      },
+    });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// GET /api/users/leaderboard - Get top users by XP
+router.get('/leaderboard', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    const topUsers = await User.find()
+      .sort({ totalXP: -1, currentXP: -1 })
+      .limit(limit)
+      .select('username name avatarNumber totalXP currentXP level licensePlate')
+      .lean();
+
+    const leaderboard = topUsers.map((user, index) => ({
+      rank: index + 1,
+      name: user.username || user.name,
+      points: user.totalXP || user.currentXP || 0,
+      avatar: user.avatarNumber || 1,
+      level: user.level || 1,
+      licensePlate: user.licensePlate,
+    }));
+
+    res.json({
+      success: true,
+      leaderboard,
+    });
+  } catch (error) {
+    console.error('Leaderboard error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch leaderboard' });
+  }
+});
+
+// POST /api/users/login-plate - Login with username and license plate
 router.post('/login-plate', async (req, res) => {
   try {
-    const { licensePlate } = req.body;
+    const { username, licensePlate } = req.body;
 
     if (!licensePlate) {
       return res.status(400).json({ success: false, message: 'License plate required' });
     }
 
-    // Find or create user by license plate
-    let user = await User.findOne({ username: licensePlate.toUpperCase() });
+    // Find user by license plate
+    const user = await User.findOne({ licensePlate: licensePlate.toUpperCase() });
 
     if (!user) {
-      user = await User.create({
-        username: licensePlate.toUpperCase(),
-        licensePlate: licensePlate.toUpperCase(),
-        email: `${licensePlate.toUpperCase()}@pavepatrol.app`,
-        role: 'driver',
-        avatarNumber: 1,
-      });
+      return res.status(400).json({ success: false, message: 'License plate not found. Please sign up first.' });
+    }
+
+    // If username is provided, verify it matches
+    if (username && user.username !== username) {
+      return res.status(400).json({ success: false, message: 'Incorrect username for this license plate' });
     }
 
     res.json({
       success: true,
       user: {
         _id: user._id,
-        licensePlate: user.licensePlate || user.username,
+        username: user.username,
+        licensePlate: user.licensePlate,
         name: user.name,
         avatarNumber: user.avatarNumber,
         level: user.level,
@@ -233,6 +312,58 @@ router.put('/profile/:userId', async (req, res) => {
   } catch (error) {
     console.error('Error updating profile:', error);
     res.status(500).json({ success: false, error: 'Failed to update profile' });
+  }
+});
+
+// POST /api/users/:userId/xp - Add XP to user (for token collection)
+router.post('/:userId/xp', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { xp, reason } = req.body;
+
+    if (!xp || xp <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'XP must be a positive number',
+      });
+    }
+
+    // Find user by username (userId is actually username in mobile app)
+    const user = await User.findOne({ username: userId });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    // Add XP
+    user.currentXP = (user.currentXP || 0) + xp;
+    user.totalXP = (user.totalXP || 0) + xp;
+
+    // Check for level up (100 XP per level)
+    const newLevel = Math.floor(user.currentXP / 100) + 1;
+    if (newLevel > user.level) {
+      user.level = newLevel;
+      console.log(`🎉 User ${user.username} leveled up to level ${newLevel}!`);
+    }
+
+    await user.save();
+
+    console.log(`✅ Added ${xp} XP to ${user.username}. Reason: ${reason || 'None'}`);
+
+    res.json({
+      success: true,
+      message: `Added ${xp} XP`,
+      user: {
+        id: user._id,
+        username: user.username,
+        currentXP: user.currentXP,
+        totalXP: user.totalXP,
+        level: user.level,
+      },
+    });
+  } catch (error) {
+    console.error('Error adding XP:', error);
+    res.status(500).json({ success: false, error: 'Failed to add XP' });
   }
 });
 

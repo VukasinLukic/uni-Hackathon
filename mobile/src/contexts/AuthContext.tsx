@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface User {
+  username: string;
   licensePlate: string;
   name?: string;
   avatarNumber: number;
@@ -11,7 +12,8 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (licensePlate: string) => Promise<void>;
+  login: (username: string, licensePlate: string) => Promise<void>;
+  signup: (username: string, licensePlate: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -21,11 +23,33 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const API_URL = 'http://10.0.10.156:7392';
+// Use environment variable with fallback
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.10.156:7392';
+
+// Helper function for fetch with timeout
+const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 10000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error: any) {
+    clearTimeout(id);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout - please check your internet connection');
+    }
+    throw error;
+  }
+};
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     checkStoredUser();
@@ -39,28 +63,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('Error loading stored user:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const login = async (licensePlate: string) => {
+  const signup = async (username: string, licensePlate: string) => {
     try {
       setIsLoading(true);
+      console.log('🔄 Attempting signup...', { username, licensePlate, API_URL });
 
-      // Call backend to create/get user by license plate
-      const response = await fetch(`${API_URL}/api/users/login-plate`, {
+      const response = await fetchWithTimeout(`${API_URL}/api/users/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ licensePlate: licensePlate.toUpperCase() }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Login failed');
-      }
+        body: JSON.stringify({
+          username,
+          licensePlate: licensePlate.toUpperCase()
+        }),
+      }, 15000); // 15 second timeout
 
       const data = await response.json();
+      console.log('📥 Signup response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Signup failed');
+      }
+
       const userData: User = {
+        username: data.user.username,
         licensePlate: data.user.licensePlate,
         name: data.user.name,
         avatarNumber: data.user.avatarNumber || 1,
@@ -70,7 +98,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await AsyncStorage.setItem('@user_id', data.user._id);
       setUser(userData);
 
-      console.log('✅ Login successful:', licensePlate);
+      console.log('✅ Signup successful:', username);
+    } catch (error: any) {
+      console.error('❌ Signup error:', error);
+
+      // Better error messages
+      if (error.message?.includes('timeout') || error.message?.includes('Network request failed')) {
+        throw new Error('Cannot connect to server. Make sure:\n1. Backend is running (npm run dev)\n2. You are on the same Wi-Fi network\n3. Firewall is not blocking port 7392');
+      }
+
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = async (username: string, licensePlate: string) => {
+    try {
+      setIsLoading(true);
+      console.log('🔄 Attempting login...', { licensePlate, API_URL });
+
+      const response = await fetchWithTimeout(`${API_URL}/api/users/login-plate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          licensePlate: licensePlate.toUpperCase()
+        }),
+      }, 15000); // 15 second timeout
+
+      const data = await response.json();
+      console.log('📥 Login response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      const userData: User = {
+        username: data.user.username,
+        licensePlate: data.user.licensePlate,
+        name: data.user.name,
+        avatarNumber: data.user.avatarNumber || 1,
+      };
+
+      await AsyncStorage.setItem('@user', JSON.stringify(userData));
+      await AsyncStorage.setItem('@user_id', data.user._id);
+      setUser(userData);
+
+      console.log('✅ Login successful with:', username);
     } catch (error) {
       console.error('❌ Login error:', error);
       throw error;
@@ -95,6 +170,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: !!user,
     isLoading,
     login,
+    signup,
     logout,
   };
 

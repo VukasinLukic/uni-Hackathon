@@ -14,13 +14,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../contexts/AuthContext';
 import { COLORS } from '../utils/colors';
 import { FONTS } from '../utils/typography';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface SettingsScreenProps {
-  onBack: () => void;
+  onBack?: () => void;
+  onLogout?: () => void;
+  onDrivingMode?: () => void;
+  onWalkingMode?: () => void;
 }
 
-export default function SettingsScreen({ onBack }: SettingsScreenProps) {
+export default function SettingsScreen({ onBack, onLogout, onDrivingMode, onWalkingMode }: SettingsScreenProps) {
   const { user, logout } = useAuth();
+  const navigation = useNavigation<NavigationProp>();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [discoverySensitivity, setDiscoverySensitivity] = useState<'low' | 'medium' | 'high'>('medium');
 
@@ -36,8 +45,12 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
           onPress: async () => {
             await logout();
             await AsyncStorage.removeItem('@onboarding_completed');
-            // Navigate to welcome screen - handled by parent
-            onBack();
+            // Navigate to welcome screen
+            if (onLogout) {
+              onLogout();
+            } else {
+              onBack();
+            }
           },
         },
       ]
@@ -66,7 +79,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack || (() => navigation.goBack())}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Settings</Text>
@@ -179,6 +192,31 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
           )}
         </View>
 
+        {/* Mode Selection Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Exploration Modes</Text>
+
+          <View style={styles.modeButtonsContainer}>
+            <TouchableOpacity
+              style={[styles.modeButton, styles.walkingModeButton]}
+              onPress={onWalkingMode || (() => navigation.navigate('WalkingMode'))}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.modeButtonIcon}>🚶</Text>
+              <Text style={styles.modeButtonText}>Walking Mode</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modeButton, styles.drivingModeButton]}
+              onPress={onDrivingMode || (() => navigation.navigate('DrivingMode'))}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.modeButtonIcon}>🚗</Text>
+              <Text style={styles.modeButtonText}>Driving Mode</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Logout Button */}
         <TouchableOpacity
           style={styles.logoutButton}
@@ -283,6 +321,31 @@ const styles = StyleSheet.create({
     color: COLORS.text.secondary,
   },
   sensitivityButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  modeButtonsContainer: {
+    gap: 12,
+  },
+  modeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    padding: 18,
+    gap: 12,
+  },
+  walkingModeButton: {
+    backgroundColor: '#4ECDC4',
+  },
+  drivingModeButton: {
+    backgroundColor: '#FFD975',
+  },
+  modeButtonIcon: {
+    fontSize: 28,
+  },
+  modeButtonText: {
+    fontSize: 18,
+    fontFamily: FONTS.button,
     color: '#FFFFFF',
   },
   logoutButton: {

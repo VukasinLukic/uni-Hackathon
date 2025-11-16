@@ -37,7 +37,15 @@
       "Bash(npx expo start)",
       "Bash(timeout:*)",
       "Bash(where:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(mobile/src/screens/TestModeScreen.tsx)",
+      "Bash(mobile/src/screens/SensorDebugScreen.tsx)",
+      "Bash(mobile/src/screens/ViewGraphsScreen.tsx)",
+      "Bash(mobile/src/screens/TestBackendScreen.tsx)",
+      "Bash(mobile/src/screens/HomeScreenLegacy.tsx)",
+      "Bash(npm ls:*)",
+      "Bash(ipconfig:*)",
+      "Bash(npm start)"
     ],
     "deny": [],
     "ask": []

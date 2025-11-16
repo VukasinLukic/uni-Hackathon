@@ -7,6 +7,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "seed": "ts-node src/scripts/seedData.ts",
+    "seed:temisvar": "ts-node src/scripts/seedTemisvar.ts",
     "diagnose": "ts-node src/scripts/diagnoseClusteringIssue.ts",
     "create-indexes": "ts-node src/scripts/createIndexes.ts"
   },
