@@ -27,7 +27,6 @@ interface TeamRoute {
   }>;
   estimatedTime: number;
   totalDistance: number;
-  impactScore: number;
   routeGeometry?: {
     type: 'LineString';
     coordinates: number[][];
@@ -37,7 +36,6 @@ interface TeamRoute {
 interface MissionResult {
   missions: TeamRoute[];
   totalPotholes: number;
-  totalImpact: number;
 }
 
 const teamColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
@@ -103,8 +101,6 @@ export default function AIMissionsPage() {
     yPos += 6;
     doc.text(`Total Potholes: ${missionResult.totalPotholes}`, 20, yPos);
     yPos += 6;
-    doc.text(`Total Impact Score: ${missionResult.totalImpact.toFixed(2)}`, 20, yPos);
-    yPos += 6;
     doc.text(`Optimization: ${formData.optimizationCriteria === 'reports' ? 'Most Reports' : 'Highest Severity'}`, 20, yPos);
     yPos += 12;
 
@@ -123,8 +119,6 @@ export default function AIMissionsPage() {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`Potholes: ${mission.potholes.length} | Distance: ${mission.totalDistance.toFixed(1)} km | Time: ${mission.estimatedTime.toFixed(1)}h`, 20, yPos);
-      yPos += 6;
-      doc.text(`Impact Score: ${mission.impactScore.toFixed(2)}`, 20, yPos);
       yPos += 8;
 
       mission.potholes.forEach((pothole, pIdx) => {
@@ -450,12 +444,6 @@ export default function AIMissionsPage() {
                               {mission.estimatedTime.toFixed(1)} hours
                             </span>
                           </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600 dark:text-gray-400">Impact:</span>
-                            <span className="font-semibold text-gray-900 dark:text-white">
-                              {mission.impactScore.toFixed(2)} / 1
-                            </span>
-                          </div>
                         </div>
 
                         {/* Pothole List with ADDRESSES */}
@@ -494,15 +482,6 @@ export default function AIMissionsPage() {
                       </div>
                     ))}
                   </div>
-                </div>
-
-                {/* MAP WITH ROUTES */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <Route className="w-5 h-5 text-purple-600" />
-                    Route Map
-                  </h2>
-                  <div ref={mapContainer} className="h-[500px] rounded-lg overflow-hidden" />
                 </div>
               </>
             )}

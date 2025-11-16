@@ -56,9 +56,7 @@ const PotholesSidebar: React.FC<PotholesSidebarProps> = ({
       resolved: 'Fixed',
       rejected: 'Rejected',
     };
-    const displayStatus = statusMap[status] || status;
-    console.log('🔄 Mapping status:', status, '->', displayStatus);
-    return displayStatus;
+    return statusMap[status] || status;
   };
 
   const getStatusColor = (status: string): string => {

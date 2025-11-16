@@ -46,10 +46,7 @@ export const reverseGeocode = async (lng: number, lat: number): Promise<string> 
 
 // Extract area (municipality/neighborhood) from address
 export const getAreaFromAddress = (address: string): string => {
-  console.log('🏙️ getAreaFromAddress input:', address);
-
   if (!address || address === 'Unknown address' || address === 'Loading address...') {
-    console.log('→ Returning Unknown (no address)');
     return 'Unknown';
   }
 
@@ -59,14 +56,12 @@ export const getAreaFromAddress = (address: string): string => {
   };
 
   const parts = address.split(',').map(p => cleanPostalCode(p.trim()));
-  console.log('→ Parts after cleaning:', parts);
 
   // Look for Belgrade municipalities FIRST (more specific)
   const belgradeMunicipalities = ['Vračar', 'Vracar', 'Stari Grad', 'Novi Beograd', 'Zemun', 'Voždovac', 'Vozdovac'];
   for (const part of parts) {
     const found = belgradeMunicipalities.find(m => part.toLowerCase().includes(m.toLowerCase()));
     if (found) {
-      console.log('→ Found Belgrade municipality:', found);
       return found;
     }
   }
@@ -81,21 +76,18 @@ export const getAreaFromAddress = (address: string): string => {
         !potentialNeighborhood.toLowerCase().startsWith('strada') &&
         !potentialNeighborhood.toLowerCase().startsWith('bulevar') &&
         potentialNeighborhood.length > 3) {
-      console.log('→ Found Timișoara neighborhood (from address):', potentialNeighborhood);
       return potentialNeighborhood;
     }
   }
 
   // If Timișoara found but no specific neighborhood, return city
   if (timIndex >= 0) {
-    console.log('→ Found Timișoara (city level - no specific neighborhood)');
     return 'Timișoara Center';
   }
 
   // Check for Belgrade
   const bgIndex = parts.findIndex(p => p.toLowerCase().includes('beograd') || p.toLowerCase().includes('belgrade'));
   if (bgIndex >= 0) {
-    console.log('→ Found Belgrade (city level)');
     return 'Beograd Center';
   }
 
@@ -104,11 +96,9 @@ export const getAreaFromAddress = (address: string): string => {
     if (part.length > 2 && !part.toLowerCase().startsWith('strada') &&
         !part.toLowerCase().startsWith('bulevar') &&
         !part.toLowerCase().includes('românia') && !part.toLowerCase().includes('romania')) {
-      console.log('→ Fallback to part:', part);
       return part;
     }
   }
 
-  console.log('→ No match, returning Unknown');
   return 'Unknown';
 };
