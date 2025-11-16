@@ -40,36 +40,9 @@ Mobile app responsibilities for PavePatrol (clean exploration/gamification exper
 
 ## 📅 PHASE 1: Project Cleanup & Setup (Days 1-2)
 
-### Day 1 Morning: Code Cleanup
 
-**DELETE Unnecessary Files:**
-```
-src/screens/TestModeScreen.tsx
-src/screens/SensorDebugScreen.tsx
-src/screens/ViewGraphsScreen.tsx
-src/screens/TestBackendScreen.tsx
-src/screens/HomeScreenLegacy.tsx
-src/utils/testFallback.ts (if not needed)
-```
 
-**RENAME Files:**
-```
-src/services/detectionService.ts → src/services/discoveryService.ts
-(if exists) src/types/pothole.types.ts → src/types/discovery.types.ts
-```
 
-**UPDATE Terminology in Existing Files:**
-- `src/screens/DrivingModeScreen.tsx` - Replace all "pothole" → "discovery"
-- `src/screens/WalkingModeScreen.tsx` - Replace all "pothole" → "discovery"
-- `src/services/apiService.ts` - Rename methods:
-  - `sendPotholeEvent()` → `sendDiscoveryEvent()`
-  - `getNearbyPotholes()` → `getNearbyActivityAreas()`
-  - `getAllPotholes()` → `getAllDiscoveries()`
-  - `uploadPhoto()` → `uploadDiscoveryPhoto()`
-- `src/services/discoveryService.ts` (renamed) - Update all terminology
-- `src/utils/signalProcessing.ts` - Update comments (keep logic)
-
-**Deliverable:** Clean codebase with no pothole references
 
 ---
 
@@ -101,7 +74,7 @@ src/services/detectionService.ts → src/services/discoveryService.ts
    }
    ```
 4. Create basic Mapbox test screen to verify setup
-5. Test on iOS & Android simulators
+5. Test on iOS simulators
 
 **Deliverable:** Mapbox GL rendering successfully
 

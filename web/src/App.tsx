@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useMockAuth } from './components/auth/MockAuthProvider'
+import { useAuth0 } from '@auth0/auth0-react'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import MapPage from './pages/MapPage'
@@ -9,7 +9,7 @@ import AIMissionsPage from './pages/AIMissionsPage'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 
 function App() {
-  const { isLoading } = useMockAuth()
+  const { isLoading } = useAuth0()
 
   if (isLoading) {
     return (

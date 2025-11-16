@@ -31,7 +31,13 @@
       "Bash(taskkill //F //PID 19544)",
       "Bash(npx expo prebuild:*)",
       "Bash(nul)",
-      "Bash(npx expo start --clear)"
+      "Bash(npx expo start --clear)",
+      "Bash(npx expo install:*)",
+      "Bash(FogOfWarMap.tsx)",
+      "Bash(npx expo start)",
+      "Bash(timeout:*)",
+      "Bash(where:*)",
+      "Bash(node -e:*)"
     ],
     "deny": [],
     "ask": []

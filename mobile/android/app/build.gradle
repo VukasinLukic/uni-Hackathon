@@ -89,6 +89,9 @@ android {
 
     namespace 'com.roadsense.mobile'
     defaultConfig {
+// @generated begin react-native-auth0-manifest-placeholder - expo prebuild (DO NOT MODIFY) sync-df506d2fe183f48f4f8714c8e80841ef4fa8e03e
+manifestPlaceholders = [auth0Domain: "dev-u0mn320118yum8qm.us.auth0.com", auth0Scheme: "roadsense"]
+// @generated end react-native-auth0-manifest-placeholder
         applicationId 'com.roadsense.mobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion

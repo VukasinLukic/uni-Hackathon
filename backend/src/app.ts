@@ -3,17 +3,27 @@ import cors from 'cors';
 
 const app = express();
 
-// Middleware - CORS Configuration
-// In development, allow all origins for Expo Go testing
-// In production, restrict to specific domains
-const corsOptions = {
-  origin: process.env.ALLOW_ALL_ORIGINS === 'true'
-    ? true // Allow all origins (development only!)
-    : [process.env.FRONTEND_URL!, process.env.MOBILE_URL!],
-  credentials: true,
-};
+// MANUAL CORS MIDDLEWARE - ALWAYS ALLOW ALL ORIGINS IN DEVELOPMENT
+app.use((req, res, next) => {
+  console.log(`🔵 CORS Middleware - ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
 
-app.use(cors(corsOptions));
+  const origin = req.headers.origin || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+
+  console.log(`✅ CORS Headers set - Allow-Origin: ${origin}`);
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    console.log(`🟢 OPTIONS preflight - sending 204`);
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
 app.use(express.json());
 
 // Health check (no auth)
@@ -35,6 +45,7 @@ import explorationRoutes from './routes/exploration.routes';
 import driveRoutes from './routes/drive.routes';
 import aiMissionRoutes from './routes/aiMission.routes';
 import geminiChatRoutes from './routes/geminiChat.routes';
+import userRoutes from './routes/user.routes';
 import leaderboardRoutes from './routes/leaderboard.routes';
 import rewardsRoutes from './routes/rewards.routes';
 
@@ -54,6 +65,7 @@ app.use('/api/exploration', explorationRoutes);
 app.use('/api/drives', driveRoutes);
 app.use('/api/ai-mission', aiMissionRoutes);
 app.use('/api/gemini-chat', geminiChatRoutes);
+app.use('/api/users', userRoutes); // Auth0-protected user profile routes
 app.use('/api/leaderboards', leaderboardRoutes);
 app.use('/api/rewards', rewardsRoutes);
 

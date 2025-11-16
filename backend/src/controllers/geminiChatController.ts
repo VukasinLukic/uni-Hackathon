@@ -97,7 +97,7 @@ Now answer the user's question based on this real-time data.
 
     // Initialize the model (use simple text generation, not chat)
     const model = genAI.getGenerativeModel({
-      model: 'gemini-pro',
+      model: 'gemini-2.5-flash',
     });
 
     // Build full prompt with context, history, and current message

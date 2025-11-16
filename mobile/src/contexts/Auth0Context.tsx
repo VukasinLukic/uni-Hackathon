@@ -1,0 +1,182 @@
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+
+// Enable dismissing the web browser on iOS
+WebBrowser.maybeCompleteAuthSession();
+
+const auth0Domain = Constants.expoConfig?.extra?.EXPO_PUBLIC_AUTH0_DOMAIN || 'dev-u0mn320118yum8qm.us.auth0.com';
+const auth0ClientId = Constants.expoConfig?.extra?.EXPO_PUBLIC_AUTH0_CLIENT_ID || 'KW9nRPYtj4LyMKePzFe7jDvmbEfftFmB';
+
+console.log('🔑 Auth0 Config:', {
+  domain: auth0Domain,
+  clientId: auth0ClientId,
+  fromEnv: Constants.expoConfig?.extra?.EXPO_PUBLIC_AUTH0_CLIENT_ID,
+});
+
+interface Auth0User {
+  sub?: string;
+  name?: string;
+  email?: string;
+  picture?: string;
+}
+
+interface Auth0ContextType {
+  user: Auth0User | null;
+  accessToken: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const Auth0Context = createContext<Auth0ContextType | undefined>(undefined);
+
+interface Auth0ProviderProps {
+  children: ReactNode;
+}
+
+export const Auth0Provider: React.FC<Auth0ProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<Auth0User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Redirect URI for Expo Go - using proxy for stability
+  const redirectUri = AuthSession.makeRedirectUri({
+    useProxy: true,
+  });
+
+  // Debug: Log redirect URI to see what Expo generates
+  console.log('📍 Redirect URI (with proxy):', redirectUri);
+  console.log('📍 Also try without proxy:', AuthSession.makeRedirectUri({ scheme: 'exp' }));
+
+  // Check for stored credentials on mount
+  useEffect(() => {
+    checkStoredCredentials();
+  }, []);
+
+  const checkStoredCredentials = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('@auth0_access_token');
+      const storedUser = await AsyncStorage.getItem('@auth0_user');
+
+      if (storedToken && storedUser) {
+        setAccessToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      }
+    } catch (error) {
+      console.error('Error loading stored credentials:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = async () => {
+    try {
+      setIsLoading(true);
+
+      console.log('🚀 Opening Auth0 login...');
+      console.log('Redirect URI:', redirectUri);
+
+      // Build Auth0 authorization URL
+      const authUrl =
+        `https://${auth0Domain}/authorize?` +
+        `client_id=${auth0ClientId}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=token id_token` +
+        `&scope=openid profile email` +
+        `&audience=https://api.roadsense.com` +
+        `&nonce=${Math.random().toString(36)}`;
+
+      console.log('Auth URL:', authUrl);
+
+      // Open Auth0 login in browser using WebBrowser
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+      console.log('Auth result:', result);
+
+      if (result.type === 'success' && result.url) {
+        // Parse tokens from URL hash
+        const urlObj = new URL(result.url);
+        const hash = urlObj.hash.substring(1); // Remove #
+        const params = new URLSearchParams(hash);
+
+        const access_token = params.get('access_token');
+        const id_token = params.get('id_token');
+
+        if (access_token && id_token) {
+          console.log('✅ Auth0 login successful');
+
+          // Decode ID token to get user info
+          const base64Url = id_token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(
+            atob(base64)
+              .split('')
+              .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
+          );
+          const userInfo = JSON.parse(jsonPayload) as Auth0User;
+
+          // Store credentials
+          await AsyncStorage.setItem('@auth0_access_token', access_token);
+          await AsyncStorage.setItem('@auth0_user', JSON.stringify(userInfo));
+
+          setAccessToken(access_token);
+          setUser(userInfo);
+        }
+      } else if (result.type === 'cancel') {
+        console.log('ℹ️ Auth0 login cancelled by user');
+      }
+    } catch (error: any) {
+      console.error('❌ Auth0 login error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      setIsLoading(true);
+
+      // Clear stored credentials
+      await AsyncStorage.removeItem('@auth0_access_token');
+      await AsyncStorage.removeItem('@auth0_user');
+
+      setUser(null);
+      setAccessToken(null);
+
+      console.log('✅ Auth0 logout successful');
+
+      // Optional: Open Auth0 logout endpoint
+      const logoutUrl = `https://${auth0Domain}/v2/logout?client_id=${auth0ClientId}&returnTo=${encodeURIComponent(redirectUri)}`;
+      await WebBrowser.openBrowserAsync(logoutUrl);
+    } catch (error) {
+      console.error('❌ Auth0 logout error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const value: Auth0ContextType = {
+    user,
+    accessToken,
+    isAuthenticated: !!user && !!accessToken,
+    isLoading,
+    login,
+    logout,
+  };
+
+  return <Auth0Context.Provider value={value}>{children}</Auth0Context.Provider>;
+};
+
+export const useAuth0 = (): Auth0ContextType => {
+  const context = useContext(Auth0Context);
+  if (context === undefined) {
+    throw new Error('useAuth0 must be used within an Auth0Provider');
+  }
+  return context;
+};

@@ -5,6 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "scheme": "roadsense",
     "splash": {
       "backgroundColor": "#2563eb"
     },
@@ -16,11 +17,16 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "PavePatrol needs background location to continue detecting potholes even when the app is in background.",
         "NSLocationAlwaysUsageDescription": "PavePatrol needs background location to continue detecting potholes.",
         "NSMotionUsageDescription": "PavePatrol uses motion sensors to detect potholes from vibrations.",
-        "NSCameraUsageDescription": "PavePatrol needs camera access to photograph potholes in Walking Mode."
+        "NSCameraUsageDescription": "PavePatrol needs camera access to photograph potholes in Walking Mode.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.roadsense.mobile"
+      "package": "com.roadsense.mobile",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "plugins": [
       [
@@ -28,7 +34,14 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow RoadSense to use your location to detect potholes."
         }
-      ]
-    ]
+      ],
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "381dd394-d960-43a3-bac9-e4e4124e30bf"
+      }
+    }
   }
 }

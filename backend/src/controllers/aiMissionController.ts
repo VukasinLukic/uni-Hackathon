@@ -132,7 +132,7 @@ Consider:
 Generate the optimal mission plan now:`;
 
     // Call Gemini API
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.0-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent(prompt);
     let text = result.response.text();
 

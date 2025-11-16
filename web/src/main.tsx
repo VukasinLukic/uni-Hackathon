@@ -4,14 +4,14 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import './index.css'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { MockAuthProvider } from './components/auth/MockAuthProvider'
+import Auth0ProviderWithNavigate from './components/auth/Auth0ProviderWithNavigate'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <MockAuthProvider>
+      <Auth0ProviderWithNavigate>
         <App />
-      </MockAuthProvider>
+      </Auth0ProviderWithNavigate>
     </BrowserRouter>
   </React.StrictMode>,
 )
