@@ -68,7 +68,10 @@ export default function GeminiChatWidget() {
         content: msg.content,
       }));
 
-      const response = await chatWithGemini(inputValue, history);
+      // Get user's current location (Timișoara default)
+      const userLocation = { lat: 45.7489, lng: 21.2257 };
+
+      const response = await chatWithGemini(inputValue, history, userLocation);
 
       const assistantMessage: Message = {
         role: 'assistant',
@@ -196,7 +199,10 @@ export default function GeminiChatWidget() {
         )}
 
         {/* Messages Container */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 h-[calc(100vh-180px)]">
+        <div
+          className="overflow-y-auto p-4 space-y-4"
+          style={{ height: 'calc(100vh - 280px)', paddingBottom: '1rem' }}
+        >
           {messages.map((message, index) => (
             <ChatMessage key={index} message={message} />
           ))}
@@ -218,7 +224,7 @@ export default function GeminiChatWidget() {
         </div>
 
         {/* Input Area */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4">
+        <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-end space-x-2">
             <input
               ref={inputRef}

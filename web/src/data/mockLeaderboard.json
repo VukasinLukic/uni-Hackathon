@@ -1,0 +1,77 @@
+[
+  {
+    "id": "1",
+    "licensePlate": "NS-123-AB",
+    "points": 2450
+  },
+  {
+    "id": "2",
+    "licensePlate": "NS-456-CD",
+    "points": 2100
+  },
+  {
+    "id": "3",
+    "licensePlate": "NS-789-EF",
+    "points": 1870
+  },
+  {
+    "id": "4",
+    "licensePlate": "NS-234-GH",
+    "points": 1650
+  },
+  {
+    "id": "5",
+    "licensePlate": "NS-567-IJ",
+    "points": 1420
+  },
+  {
+    "id": "6",
+    "licensePlate": "NS-890-KL",
+    "points": 1280
+  },
+  {
+    "id": "7",
+    "licensePlate": "NS-345-MN",
+    "points": 1150
+  },
+  {
+    "id": "8",
+    "licensePlate": "NS-678-OP",
+    "points": 1020
+  },
+  {
+    "id": "9",
+    "licensePlate": "NS-901-QR",
+    "points": 890
+  },
+  {
+    "id": "10",
+    "licensePlate": "NS-135-ST",
+    "points": 760
+  },
+  {
+    "id": "11",
+    "licensePlate": "NS-246-UV",
+    "points": 650
+  },
+  {
+    "id": "12",
+    "licensePlate": "NS-357-WX",
+    "points": 540
+  },
+  {
+    "id": "13",
+    "licensePlate": "NS-468-YZ",
+    "points": 420
+  },
+  {
+    "id": "14",
+    "licensePlate": "NS-579-AA",
+    "points": 310
+  },
+  {
+    "id": "15",
+    "licensePlate": "NS-680-BB",
+    "points": 200
+  }
+]

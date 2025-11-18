@@ -62,6 +62,15 @@ export interface Pothole {
   updatedAt: string;
 }
 
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  points: number;
+  avatar: number;
+  level: number;
+  licensePlate?: string;
+}
+
 export class APIService {
   /**
    * Get all potholes
@@ -164,19 +173,38 @@ export class APIService {
   /**
    * Generate AI-optimized repair mission
    * POST /api/ai-mission
+   * Note: Uses 60s timeout because AI processing can take longer
    */
   static async generateAIMission(missionData: {
-    missionType: 'safety-first' | 'max-coverage' | 'critical-only';
     teams: number;
     workHours: number;
-    constraints: string[];
   }): Promise<any> {
     try {
-      const response = await api.post('/ai-mission', missionData);
+      const response = await api.post('/ai-mission', missionData, {
+        timeout: 60000, // 60 seconds for AI processing
+      });
       return response.data;
     } catch (error: any) {
       console.error('Failed to generate AI mission:', error.response?.data || error.message);
       throw error;
+    }
+  }
+
+  /**
+   * Get leaderboard
+   * GET /api/users/leaderboard
+   */
+  static async getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
+    try {
+      const response = await api.get<{ success: boolean; leaderboard: LeaderboardEntry[] }>(
+        '/users/leaderboard',
+        { params: { limit } }
+      );
+      console.log(`Fetched ${response.data.leaderboard.length} leaderboard entries from backend`);
+      return response.data.leaderboard || [];
+    } catch (error: any) {
+      console.error('Failed to get leaderboard:', error.response?.data || error.message);
+      return [];
     }
   }
 }
@@ -187,10 +215,12 @@ export class APIService {
  */
 export async function chatWithGemini(
   message: string,
-  history: Array<{ role: 'user' | 'assistant'; content: string }>
+  history: Array<{ role: 'user' | 'assistant'; content: string }>,
+  userLocation?: { lat: number; lng: number }
 ): Promise<any> {
   try {
-    const response = await api.post('/gemini-chat', { message, history });
+    console.log('🤖 Sending to Gemini:', { message, hasLocation: !!userLocation });
+    const response = await api.post('/gemini-chat', { message, history, userLocation });
     return response.data;
   } catch (error: any) {
     console.error('Failed to chat with Gemini:', error.response?.data || error.message);

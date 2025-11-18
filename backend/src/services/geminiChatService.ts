@@ -4,6 +4,18 @@ import { Pothole } from '../models/Pothole.model';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export class GeminiChatService {
+  // Map backend status to user-friendly display names
+  private static getStatusDisplay(status: string): string {
+    const statusMap: Record<string, string> = {
+      new: 'Needs fixing',
+      planned: 'Planned',
+      in_progress: 'In progress',
+      resolved: 'Fixed',
+      rejected: 'Rejected',
+    };
+    return statusMap[status] || status;
+  }
+
   /**
    * Chat with Gemini AI about routes and potholes
    * Gemini has context about all active potholes in the database
@@ -59,7 +71,7 @@ ${activePotholes
   .slice(0, 10)
   .map(
     (p, i) =>
-      `${i + 1}. Location: [${p.location.coordinates[1].toFixed(4)}, ${p.location.coordinates[0].toFixed(4)}], Severity: ${p.severity}, Status: ${p.status}, Reports: ${p.reports}`
+      `${i + 1}. Coordinates: [${p.location.coordinates[1].toFixed(4)}, ${p.location.coordinates[0].toFixed(4)}], Address: ${p.location.address || 'Not available'}, Severity: ${p.severity}, Status: ${this.getStatusDisplay(p.status)}, Reports: ${p.reports}`
   )
   .join('\n')}
 
@@ -70,7 +82,7 @@ ${nearbyPotholes
   .slice(0, 5)
   .map(
     (p, i) =>
-      `${i + 1}. Distance: ~${this.calculateDistance(userLocation!.lat, userLocation!.lng, p.location.coordinates[1], p.location.coordinates[0]).toFixed(1)}km, Severity: ${p.severity}, Status: ${p.status}`
+      `${i + 1}. Distance: ~${this.calculateDistance(userLocation!.lat, userLocation!.lng, p.location.coordinates[1], p.location.coordinates[0]).toFixed(1)}km, Address: ${p.location.address || 'Not available'}, Coordinates: [${p.location.coordinates[1].toFixed(4)}, ${p.location.coordinates[0].toFixed(4)}], Severity: ${p.severity}, Status: ${this.getStatusDisplay(p.status)}`
   )
   .join('\n')}`
     : ''
@@ -78,11 +90,12 @@ ${nearbyPotholes
 
 **Instructions:**
 - Be concise and helpful
-- When suggesting routes, mention specific coordinates if relevant
+- **IMPORTANT**: When mentioning pothole locations, ALWAYS use the provided Address field first (if available), then coordinates as backup
 - Warn about high-severity potholes (>70)
-- If user asks about a specific location, reference nearby potholes from the database
+- If user asks about a specific location, reference nearby potholes from the database with their addresses
 - Always prioritize user safety
-- Use Serbian language if user writes in Serbian, otherwise English`;
+- Use Serbian language if user writes in Serbian, otherwise English
+- Example: "Rupa na adresi Bulevar oslobođenja 46, Novi Sad (koordinate 45.7489, 21.2257)" instead of just coordinates`;
 
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
@@ -182,7 +195,7 @@ ${potholesOnRoute
   .slice(0, 10)
   .map(
     (p, i) =>
-      `${i + 1}. [${p.location.coordinates[1].toFixed(4)}, ${p.location.coordinates[0].toFixed(4)}] - Severity: ${p.severity}/100, Status: ${p.status}`
+      `${i + 1}. Address: ${p.location.address || 'Not available'}, Coordinates: [${p.location.coordinates[1].toFixed(4)}, ${p.location.coordinates[0].toFixed(4)}] - Severity: ${p.severity}/100, Status: ${this.getStatusDisplay(p.status)}`
   )
   .join('\n')}
 

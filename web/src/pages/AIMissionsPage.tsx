@@ -1,14 +1,17 @@
-import { useState } from 'react';
-import { Brain, Users, Clock, Shield, School, TrendingUp, Calendar } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Brain, Users, Clock, MapPin, Route, FileText } from 'lucide-react';
 import AppLayout from '../components/Layout/AppLayout';
-import { cn } from '../utils/cn';
 import { APIService } from '../services/apiService';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { jsPDF } from 'jspdf';
+
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
 interface MissionFormData {
-  missionType: 'safety-first' | 'max-coverage' | 'critical-only';
   teams: number;
   workHours: number;
-  constraints: string[];
+  optimizationCriteria?: 'reports' | 'severity';
 }
 
 interface TeamRoute {
@@ -19,11 +22,11 @@ interface TeamRoute {
     lat: number;
     lng: number;
     severity: number;
+    address: string;
     distance?: number;
   }>;
   estimatedTime: number;
   totalDistance: number;
-  impactScore: number;
   routeGeometry?: {
     type: 'LineString';
     coordinates: number[][];
@@ -33,30 +36,22 @@ interface TeamRoute {
 interface MissionResult {
   missions: TeamRoute[];
   totalPotholes: number;
-  totalImpact: number;
 }
 
 const teamColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
 
 export default function AIMissionsPage() {
   const [formData, setFormData] = useState<MissionFormData>({
-    missionType: 'safety-first',
     teams: 2,
     workHours: 6,
-    constraints: [],
+    optimizationCriteria: 'reports', // Default
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [missionResult, setMissionResult] = useState<MissionResult | null>(null);
 
-  const handleConstraintToggle = (constraint: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      constraints: prev.constraints.includes(constraint)
-        ? prev.constraints.filter((c) => c !== constraint)
-        : [...prev.constraints, constraint],
-    }));
-  };
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
 
   const handleGenerateMission = async () => {
     setIsGenerating(true);
@@ -77,8 +72,218 @@ export default function AIMissionsPage() {
   };
 
   const handleExportPDF = () => {
-    alert('PDF export feature coming soon!');
+    if (!missionResult) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let yPos = 20;
+
+    // Header
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('AI Mission Report', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 10;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 15;
+
+    // Summary
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Mission Summary', 20, yPos);
+    yPos += 8;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total Teams: ${missionResult.missions.length}`, 20, yPos);
+    yPos += 6;
+    doc.text(`Total Potholes: ${missionResult.totalPotholes}`, 20, yPos);
+    yPos += 6;
+    doc.text(`Optimization: ${formData.optimizationCriteria === 'reports' ? 'Most Reports' : 'Highest Severity'}`, 20, yPos);
+    yPos += 12;
+
+    // Mission Details
+    missionResult.missions.forEach((mission) => {
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Team ${mission.teamId}`, 20, yPos);
+      yPos += 7;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Potholes: ${mission.potholes.length} | Distance: ${mission.totalDistance.toFixed(1)} km | Time: ${mission.estimatedTime.toFixed(1)}h`, 20, yPos);
+      yPos += 8;
+
+      mission.potholes.forEach((pothole, pIdx) => {
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        doc.setFontSize(9);
+        doc.text(`${pIdx + 1}. ${pothole.address}`, 25, yPos);
+        yPos += 5;
+        doc.setFontSize(8);
+        doc.text(`   Severity: ${(pothole.severity * 100).toFixed(0)}/100 | Distance from prev: ${pothole.distance?.toFixed(2) || 0} km`, 25, yPos);
+        yPos += 6;
+      });
+
+      yPos += 5;
+    });
+
+    doc.save(`AI_Mission_Report_${new Date().toISOString().split('T')[0]}.pdf`);
   };
+
+  // Initialize Mapbox map
+  useEffect(() => {
+    if (!mapContainer.current || map.current) return;
+
+    if (!MAPBOX_TOKEN) {
+      console.error('❌ MAPBOX_TOKEN is missing!');
+      return;
+    }
+
+    mapboxgl.accessToken = MAPBOX_TOKEN;
+
+    try {
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [19.8335, 45.2671], // Novi Sad
+        zoom: 13,
+      });
+
+      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+      map.current.on('load', () => {
+        console.log('✅ Mapbox map loaded successfully');
+      });
+
+      map.current.on('error', (e) => {
+        console.error('❌ Mapbox error:', e);
+      });
+    } catch (error) {
+      console.error('❌ Failed to initialize map:', error);
+    }
+
+    return () => {
+      map.current?.remove();
+    };
+  }, []);
+
+  // Update map with mission routes
+  useEffect(() => {
+    if (!map.current || !missionResult) return;
+
+    // Wait for map to load
+    if (!map.current.isStyleLoaded()) {
+      map.current.on('load', () => updateMapWithRoutes());
+      return;
+    }
+
+    updateMapWithRoutes();
+
+    function updateMapWithRoutes() {
+      if (!map.current || !missionResult) return;
+
+      // Remove existing layers and sources
+      missionResult.missions.forEach((_, idx) => {
+        if (map.current!.getLayer(`route-${idx}`)) map.current!.removeLayer(`route-${idx}`);
+        if (map.current!.getSource(`route-${idx}`)) map.current!.removeSource(`route-${idx}`);
+      });
+
+      // Remove existing markers
+      const markers = document.querySelectorAll('.mission-marker');
+      markers.forEach((m) => m.remove());
+
+      // Add route LineStrings
+      missionResult.missions.forEach((mission, idx) => {
+        if (!mission.routeGeometry || !map.current) return;
+
+        const sourceId = `route-${idx}`;
+        const layerId = `route-${idx}`;
+
+        map.current.addSource(sourceId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: mission.routeGeometry,
+            properties: {},
+          } as any,
+        });
+
+        map.current.addLayer({
+          id: layerId,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': teamColors[idx],
+            'line-width': 4,
+            'line-opacity': 0.8,
+          },
+        });
+      });
+
+      // Add numbered markers for each pothole
+      missionResult.missions.forEach((mission, teamIdx) => {
+        mission.potholes.forEach((pothole, pIdx) => {
+          const el = document.createElement('div');
+          el.className = 'mission-marker';
+          el.innerHTML = `<div style="
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: ${teamColors[teamIdx]};
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer;
+          ">${pIdx + 1}</div>`;
+
+          const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+            <div style="padding: 8px; font-size: 14px;">
+              <div style="font-weight: bold; color: #7c3aed; margin-bottom: 4px;">
+                Team ${mission.teamId} - Stop ${pIdx + 1}
+              </div>
+              <div style="margin-bottom: 4px;">${pothole.address}</div>
+              <div style="color: #666; font-size: 12px;">
+                Severity: ${(pothole.severity * 100).toFixed(0)}/100
+              </div>
+            </div>
+          `);
+
+          new mapboxgl.Marker(el)
+            .setLngLat([pothole.lng, pothole.lat])
+            .setPopup(popup)
+            .addTo(map.current!);
+        });
+      });
+
+      // Fit bounds to show all markers
+      const bounds = new mapboxgl.LngLatBounds();
+      missionResult.missions.forEach((mission) => {
+        mission.potholes.forEach((p) => {
+          bounds.extend([p.lng, p.lat]);
+        });
+      });
+
+      if (!bounds.isEmpty()) {
+        map.current.fitBounds(bounds, { padding: 50 });
+      }
+    }
+  }, [missionResult]);
 
   return (
     <AppLayout>
@@ -100,58 +305,13 @@ export default function AIMissionsPage() {
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto space-y-6">
-            {/* Mission Configuration Form */}
+            {/* Mission Configuration Form - SIMPLIFIED */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
                 Mission Configuration
               </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Mission Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                    Mission Type
-                  </label>
-                  <div className="space-y-2">
-                    {[
-                      { value: 'safety-first', label: 'Safety First', icon: Shield },
-                      { value: 'max-coverage', label: 'Max Coverage', icon: TrendingUp },
-                      { value: 'critical-only', label: 'Critical Only', icon: Calendar },
-                    ].map((option) => {
-                      const Icon = option.icon;
-                      return (
-                        <label
-                          key={option.value}
-                          className={cn(
-                            'flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all',
-                            formData.missionType === option.value
-                              ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
-                          )}
-                        >
-                          <input
-                            type="radio"
-                            name="missionType"
-                            value={option.value}
-                            checked={formData.missionType === option.value}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                missionType: e.target.value as any,
-                              })
-                            }
-                            className="text-purple-600"
-                          />
-                          <Icon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                          <span className="text-sm text-gray-900 dark:text-white">
-                            {option.label}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Number of Teams */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -160,9 +320,7 @@ export default function AIMissionsPage() {
                   </label>
                   <select
                     value={formData.teams}
-                    onChange={(e) =>
-                      setFormData({ ...formData, teams: Number(e.target.value) })
-                    }
+                    onChange={(e) => setFormData({ ...formData, teams: Number(e.target.value) })}
                     className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
                   >
                     <option value={1}>1 Team</option>
@@ -190,148 +348,142 @@ export default function AIMissionsPage() {
                   </select>
                 </div>
 
-                {/* Constraints */}
+                {/* Optimization Criteria */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                    Constraints
+                    <Route className="w-4 h-4 inline mr-2" />
+                    Optimize By
                   </label>
-                  <div className="space-y-2">
-                    {[
-                      { value: 'avoid-schools', label: 'Avoid schools', icon: School },
-                      { value: 'high-trust-only', label: 'High trust only', icon: Shield },
-                      { value: 'ignore-recent', label: 'Ignore recent (<2d)', icon: Calendar },
-                    ].map((constraint) => {
-                      const Icon = constraint.icon;
-                      return (
-                        <label
-                          key={constraint.value}
-                          className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.constraints.includes(constraint.value)}
-                            onChange={() => handleConstraintToggle(constraint.value)}
-                            className="rounded text-purple-600"
-                          />
-                          <Icon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                          <span className="text-sm text-gray-900 dark:text-white">
-                            {constraint.label}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
+                  <select
+                    value={formData.optimizationCriteria}
+                    onChange={(e) =>
+                      setFormData({ ...formData, optimizationCriteria: e.target.value as 'reports' | 'severity' })
+                    }
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="reports">Most Reports (Most urgent)</option>
+                    <option value="severity">Highest Severity (Worst condition)</option>
+                  </select>
                 </div>
-              </div>
 
-              <div className="mt-6">
-                <button
-                  onClick={handleGenerateMission}
-                  disabled={isGenerating}
-                  className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <Brain className="w-5 h-5" />
-                  {isGenerating ? 'Generating Mission...' : 'Generate AI Mission'}
-                </button>
+                {/* Generate Button */}
+                <div className="flex items-end">
+                  <button
+                    onClick={handleGenerateMission}
+                    disabled={isGenerating}
+                    className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <Brain className="w-5 h-5" />
+                    {isGenerating ? 'Generating...' : 'Generate Mission'}
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Results Section */}
             {missionResult && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Mission Results
-                  </h2>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleSaveMission}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-                    >
-                      Save Mission
-                    </button>
-                    <button
-                      onClick={handleExportPDF}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                    >
-                      Export to PDF
-                    </button>
+              <>
+                {/* Mission Summary Cards */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Mission Results
+                    </h2>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleSaveMission}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                      >
+                        Save Mission
+                      </button>
+                      <button
+                        onClick={handleExportPDF}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Export to PDF
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {missionResult.missions.map((mission, idx) => (
+                      <div
+                        key={mission.teamId}
+                        className="p-6 rounded-lg border-2 border-gray-200 dark:border-gray-700"
+                        style={{ borderColor: teamColors[idx] }}
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                            style={{ backgroundColor: teamColors[idx] }}
+                          >
+                            {mission.teamId}
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            Team {mission.teamId}
+                          </h3>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Potholes:</span>
+                            <span className="font-semibold text-gray-900 dark:text-white">
+                              {mission.route.length}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Distance:</span>
+                            <span className="font-semibold text-gray-900 dark:text-white">
+                              {mission.totalDistance.toFixed(1)} km
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">Est. Time:</span>
+                            <span className="font-semibold text-gray-900 dark:text-white">
+                              {mission.estimatedTime.toFixed(1)} hours
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Pothole List with ADDRESSES */}
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+                            <Route className="w-4 h-4" />
+                            Route ({mission.route.length} stops):
+                          </h4>
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {mission.potholes.map((pothole, pIdx) => (
+                              <div
+                                key={pIdx}
+                                className="text-xs bg-gray-50 dark:bg-gray-900 p-2 rounded"
+                              >
+                                <div className="flex items-start gap-2">
+                                  <span className="font-bold text-purple-600 dark:text-purple-400">
+                                    {pIdx + 1}.
+                                  </span>
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900 dark:text-white flex items-center gap-1">
+                                      <MapPin className="w-3 h-3" />
+                                      {pothole.address}
+                                    </div>
+                                    <div className="text-gray-600 dark:text-gray-400 mt-1">
+                                      Severity: {(pothole.severity * 100).toFixed(0)}/100
+                                      {pothole.distance && pIdx > 0
+                                        ? ` • ${pothole.distance.toFixed(1)}km from prev`
+                                        : ''}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {missionResult.missions.map((mission, idx) => (
-                    <div
-                      key={mission.teamId}
-                      className="p-6 rounded-lg border-2 border-gray-200 dark:border-gray-700"
-                      style={{ borderColor: teamColors[idx] }}
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                          style={{ backgroundColor: teamColors[idx] }}
-                        >
-                          {mission.teamId}
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                          Team {mission.teamId}
-                        </h3>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Potholes:</span>
-                          <span className="font-semibold text-gray-900 dark:text-white">
-                            {mission.route.length}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Distance:</span>
-                          <span className="font-semibold text-gray-900 dark:text-white">
-                            {mission.totalDistance.toFixed(1)} km
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Est. Time:</span>
-                          <span className="font-semibold text-gray-900 dark:text-white">
-                            {mission.estimatedTime.toFixed(1)} hours
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 dark:text-gray-400">Impact:</span>
-                          <span className="font-semibold text-gray-900 dark:text-white">
-                            {mission.impactScore.toFixed(1)} / 10
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Pothole List */}
-                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                          Route ({mission.route.length} stops):
-                        </h4>
-                        <div className="space-y-1 max-h-40 overflow-y-auto">
-                          {mission.potholes.map((pothole, pIdx) => (
-                            <div
-                              key={pIdx}
-                              className="text-xs text-gray-600 dark:text-gray-400 flex justify-between"
-                            >
-                              <span>
-                                {pIdx + 1}. Pothole (Severity: {pothole.severity.toFixed(2)})
-                              </span>
-                              {pothole.distance && (
-                                <span className="text-gray-500">
-                                  +{pothole.distance.toFixed(1)}km
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              </>
             )}
           </div>
         </div>
