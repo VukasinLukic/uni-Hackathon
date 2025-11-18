@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>PavePatrol Gaming Map</title>
+
+  <!-- Mapbox GL JS v2.15.0 -->
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+
+  <!-- Turf.js for geospatial calculations -->
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+    }
+
+    /* Custom user marker pulse animation - SMALLER */
+    .user-marker {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 10px rgba(102, 126, 234, 0.9);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 10px rgba(102, 126, 234, 0.9);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 16px rgba(118, 75, 162, 1);
+        transform: scale(1.15);
+      }
+      100% {
+        box-shadow: 0 0 10px rgba(102, 126, 234, 0.9);
+        transform: scale(1);
+      }
+    }
+
+    /* Token collection animation overlay */
+    .token-collection-effect {
+      position: absolute;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    .token-particle {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: radial-gradient(circle, #FFD700 0%, #FFA500 50%, transparent 100%);
+      border-radius: 50%;
+      animation: collectToken 0.6s ease-out forwards;
+    }
+
+    @keyframes collectToken {
+      0% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.5) translateY(-20px);
+        opacity: 0.8;
+      }
+      100% {
+        transform: scale(0.3) translateY(-60px);
+        opacity: 0;
+      }
+    }
+
+    .token-burst {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background: radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(255, 165, 0, 0.4) 40%, transparent 70%);
+      border-radius: 50%;
+      animation: burstEffect 0.5s ease-out forwards;
+    }
+
+    @keyframes burstEffect {
+      0% {
+        transform: scale(0.5);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(3);
+        opacity: 0;
+      }
+    }
+
+    .token-text {
+      position: absolute;
+      font-size: 24px;
+      font-weight: bold;
+      color: #FFD700;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      animation: floatUp 1s ease-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes floatUp {
+      0% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-80px);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script>
+    // Configuration
+    const MAPBOX_TOKEN = 'REPLACE_WITH_TOKEN';
+    const CELL_SIZE = 0.001; // ~100m grid cells (for cell ID calculation)
+    const REVEAL_RADIUS = 60; // meters - radius of circular fog reveal
+    const FOG_COLOR = 'rgba(0, 0, 0, 0.75)'; // Dark fog overlay (unexplored areas)
+    const EXPLORED_COLOR = 'rgba(102, 126, 234, 0.3)'; // Light purple tint (explored areas)
+    const PATH_COLOR = '#9D6CFF'; // Purple path trail
+    const TOKEN_COLLECTION_RADIUS = 50; // meters - radius for collecting tokens
+
+    // State
+    let map = null;
+    let userMarker = null;
+    let userLocation = null;
+    let exploredCells = new Set();
+    let pathCoordinates = [];
+    let tokens = [];
+
+    // Initialize map
+    console.log('🗺️ Initializing Mapbox with token:', MAPBOX_TOKEN ? 'Token found' : 'NO TOKEN!');
+
+    try {
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+
+      map = new mapboxgl.Map({
+        container: 'map',
+        // Gaming-style dark theme
+        style: 'mapbox://styles/mapbox/dark-v11',
+        center: [0, 0],
+        zoom: 15,
+        pitch: 0,
+        bearing: 0,
+        attributionControl: false
+      });
+
+      console.log('🗺️ Mapbox instance created, waiting for load event...');
+
+      map.on('error', function(e) {
+        console.error('Mapbox error event:', e);
+        sendMessage({
+          type: 'error',
+          message: 'Mapbox error: ' + (e.error?.message || 'Unknown error'),
+          stack: e.error?.stack
+        });
+      });
+
+      map.on('load', function() {
+        console.log('✅ Map loaded successfully');
+
+        try {
+
+      // Add fog-of-war layer (covers entire world)
+      map.addSource('fog-source', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [-180, -90],
+              [180, -90],
+              [180, 90],
+              [-180, 90],
+              [-180, -90]
+            ]]
+          }
+        }
+      });
+
+      map.addLayer({
+        id: 'fog-layer',
+        type: 'fill',
+        source: 'fog-source',
+        paint: {
+          'fill-color': FOG_COLOR,
+          'fill-opacity': 1
+        }
+      });
+
+      // Add explored cells layer (reveals areas)
+      map.addSource('explored-cells-source', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: []
+        }
+      });
+
+      map.addLayer({
+        id: 'explored-cells-layer',
+        type: 'fill',
+        source: 'explored-cells-source',
+        paint: {
+          'fill-color': EXPLORED_COLOR,
+          'fill-opacity': 1
+        }
+      });
+
+      // Add path trail layer
+      map.addSource('path-source', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: []
+          }
+        }
+      });
+
+      // Add path glow effect (wider, more visible)
+      map.addLayer({
+        id: 'path-glow-layer',
+        type: 'line',
+        source: 'path-source',
+        paint: {
+          'line-color': PATH_COLOR,
+          'line-width': 12,
+          'line-opacity': 0.5,
+          'line-blur': 6
+        }
+      });
+
+      // Main path line (thicker and brighter)
+      map.addLayer({
+        id: 'path-layer',
+        type: 'line',
+        source: 'path-source',
+        paint: {
+          'line-color': PATH_COLOR,
+          'line-width': 6,
+          'line-opacity': 0.95,
+          'line-blur': 0.5
+        }
+      });
+
+      // Add tokens layer with circles (simpler approach, works better in WebView)
+      map.addSource('tokens-source', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: []
+        }
+      });
+
+      // Outer glow for tokens
+      map.addLayer({
+        id: 'tokens-glow',
+        type: 'circle',
+        source: 'tokens-source',
+        paint: {
+          'circle-radius': 14,
+          'circle-color': '#FFD700',
+          'circle-opacity': 0.4,
+          'circle-blur': 2
+        }
+      });
+
+      // Main token circle with gradient effect
+      map.addLayer({
+        id: 'tokens-layer',
+        type: 'circle',
+        source: 'tokens-source',
+        paint: {
+          'circle-radius': 10,
+          'circle-color': '#FFD700',
+          'circle-opacity': 0.95,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#FFFFFF',
+          'circle-stroke-opacity': 1
+        }
+      });
+
+      // Inner highlight
+      map.addLayer({
+        id: 'tokens-highlight',
+        type: 'circle',
+        source: 'tokens-source',
+        paint: {
+          'circle-radius': 4,
+          'circle-color': '#FFE66D',
+          'circle-opacity': 0.8
+        }
+      });
+
+      // Add user marker (custom HTML element)
+      const el = document.createElement('div');
+      el.className = 'user-marker';
+
+      userMarker = new mapboxgl.Marker(el)
+        .setLngLat([0, 0])
+        .addTo(map);
+
+      // Notify React Native that map is ready
+      console.log('📢 Sending map_ready message to React Native');
+      sendMessage({ type: 'map_ready' });
+        } catch (loadError) {
+          console.error('❌ Error during map load:', loadError);
+          sendMessage({
+            type: 'error',
+            message: 'Map load error: ' + loadError.message,
+            stack: loadError.stack
+          });
+        }
+      });
+    } catch (initError) {
+      console.error('❌ Error initializing Mapbox:', initError);
+      sendMessage({
+        type: 'error',
+        message: 'Init error: ' + initError.message,
+        stack: initError.stack
+      });
+    }
+
+    // Listen for messages from React Native
+    window.addEventListener('message', function(event) {
+      try {
+        const data = JSON.parse(event.data);
+        handleMessage(data);
+      } catch (e) {
+        console.error('Error parsing message:', e);
+      }
+    });
+
+    // Also listen for document messages
+    document.addEventListener('message', function(event) {
+      try {
+        const data = JSON.parse(event.data);
+        handleMessage(data);
+      } catch (e) {
+        console.error('Error parsing message:', e);
+      }
+    });
+
+    function handleMessage(data) {
+      console.log('Received message:', data.type);
+
+      switch (data.type) {
+        case 'location_update':
+          updateUserLocation(data.coords);
+          break;
+        case 'load_tokens':
+          loadTokens(data.tokens);
+          break;
+        case 'load_explored_cells':
+          loadExploredCells(data.cells);
+          break;
+        case 'set_mapbox_token':
+          mapboxgl.accessToken = data.token;
+          break;
+        case 'update_path':
+          updatePathTrail(data.coordinates);
+          break;
+        default:
+          console.log('Unknown message type:', data.type);
+      }
+    }
+
+    function updateUserLocation(coords) {
+      console.log('📍 updateUserLocation called with:', coords);
+      userLocation = coords;
+      const { latitude, longitude } = coords;
+
+      console.log('📍 Setting marker to:', longitude, latitude);
+
+      // Update user marker position
+      if (userMarker) {
+        userMarker.setLngLat([longitude, latitude]);
+      }
+
+      // Smoothly move camera to follow user
+      console.log('📍 Moving camera to:', longitude, latitude);
+      map.easeTo({
+        center: [longitude, latitude],
+        duration: 1000,
+        essential: true
+      });
+
+      // Add to path trail
+      pathCoordinates.push([longitude, latitude]);
+      console.log(`🛤️ Path updated! Total points: ${pathCoordinates.length}`);
+      updatePathSource();
+
+      // Explore new cell
+      const cellId = getCellId(latitude, longitude);
+      if (!exploredCells.has(cellId)) {
+        exploreCell(latitude, longitude, cellId);
+      }
+
+      // Check for nearby tokens
+      checkTokenCollection(latitude, longitude);
+    }
+
+    function getCellId(lat, lng) {
+      const cellLat = Math.floor(lat / CELL_SIZE);
+      const cellLng = Math.floor(lng / CELL_SIZE);
+      return `${cellLat}_${cellLng}`;
+    }
+
+    function exploreCell(lat, lng, cellId) {
+      exploredCells.add(cellId);
+
+      // Calculate cell polygon coordinates (grid system)
+      const cellLat = Math.floor(lat / CELL_SIZE) * CELL_SIZE;
+      const cellLng = Math.floor(lng / CELL_SIZE) * CELL_SIZE;
+
+      const cellPolygon = [
+        [cellLng, cellLat],
+        [cellLng + CELL_SIZE, cellLat],
+        [cellLng + CELL_SIZE, cellLat + CELL_SIZE],
+        [cellLng, cellLat + CELL_SIZE],
+        [cellLng, cellLat]
+      ];
+
+      // Add to explored cells layer
+      const source = map.getSource('explored-cells-source');
+      const currentData = source._data;
+      currentData.features.push({
+        type: 'Feature',
+        properties: { cellId },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [cellPolygon]
+        }
+      });
+      source.setData(currentData);
+
+      console.log('🎯 Explored new cell:', cellId);
+
+      // Notify React Native of new cell exploration
+      sendMessage({
+        type: 'area_explored',
+        cellId,
+        lat,
+        lng
+      });
+    }
+
+    function updatePathSource() {
+      const source = map.getSource('path-source');
+      if (source) {
+        console.log(`🛤️ Updating path source with ${pathCoordinates.length} coordinates`);
+        source.setData({
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: pathCoordinates
+          }
+        });
+      } else {
+        console.warn('⚠️ Path source not found!');
+      }
+    }
+
+    function loadTokens(tokenList) {
+      tokens = tokenList || [];
+
+      const features = tokens.map(token => ({
+        type: 'Feature',
+        properties: {
+          id: token.id,
+          type: token.type || 'coin',
+          value: token.value || 100
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [token.lng, token.lat]
+        }
+      }));
+
+      const source = map.getSource('tokens-source');
+      if (source) {
+        source.setData({
+          type: 'FeatureCollection',
+          features
+        });
+      }
+
+      // Check if user is already near any of the newly loaded tokens
+      if (userLocation) {
+        console.log('🪙 Checking for tokens near current location after loading');
+        checkTokenCollection(userLocation.latitude, userLocation.longitude);
+      }
+    }
+
+    function loadExploredCells(cells) {
+      if (!cells || cells.length === 0) return;
+
+      cells.forEach(cellId => {
+        exploredCells.add(cellId);
+      });
+
+      const features = cells.map(cellId => {
+        const [cellLat, cellLng] = cellId.split('_').map(Number);
+        const lat = cellLat * CELL_SIZE;
+        const lng = cellLng * CELL_SIZE;
+
+        const cellPolygon = [
+          [lng, lat],
+          [lng + CELL_SIZE, lat],
+          [lng + CELL_SIZE, lat + CELL_SIZE],
+          [lng, lat + CELL_SIZE],
+          [lng, lat]
+        ];
+
+        return {
+          type: 'Feature',
+          properties: { cellId },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [cellPolygon]
+          }
+        };
+      });
+
+      const source = map.getSource('explored-cells-source');
+      if (source) {
+        source.setData({
+          type: 'FeatureCollection',
+          features
+        });
+      }
+    }
+
+    function updatePathTrail(coordinates) {
+      pathCoordinates = coordinates || [];
+      updatePathSource();
+    }
+
+    function checkTokenCollection(lat, lng) {
+      if (!userLocation) {
+        console.warn('⚠️ No user location for token collection check');
+        sendMessage({ type: 'debug', message: 'No user location for token collection' });
+        return;
+      }
+
+      console.log(`🪙 Checking ${tokens.length} tokens for collection at [${lat}, ${lng}]`);
+      sendMessage({
+        type: 'debug',
+        message: `Checking ${tokens.length} tokens at [${lat.toFixed(6)}, ${lng.toFixed(6)}]`
+      });
+
+      tokens.forEach(token => {
+        // Calculate distance using Turf.js
+        const from = turf.point([lng, lat]);
+        const to = turf.point([token.lng, token.lat]);
+        const distance = turf.distance(from, to, { units: 'meters' });
+
+        console.log(`🪙 Token ${token.id}: distance = ${distance.toFixed(2)}m (threshold: ${TOKEN_COLLECTION_RADIUS}m)`);
+
+        if (distance <= 50) {  // Log tokens within 50m
+          sendMessage({
+            type: 'debug',
+            message: `Token ${token.id} at ${distance.toFixed(2)}m`
+          });
+        }
+
+        // Check if token is in an explored cell
+        const tokenCellId = getCellId(token.lat, token.lng);
+        const isInExploredCell = exploredCells.has(tokenCellId);
+
+        if (distance <= TOKEN_COLLECTION_RADIUS && !token.collected && isInExploredCell) {
+          console.log(`✅ COLLECTING TOKEN ${token.id}! Distance: ${distance.toFixed(2)}m, Cell: ${tokenCellId} (explored)`);
+          token.collected = true;
+
+          // Create visual collection effect BEFORE removing token
+          createTokenCollectionEffect(token.lat, token.lng, token.value || 100);
+
+          // Notify React Native
+          sendMessage({
+            type: 'token_collected',
+            id: token.id,
+            tokenType: token.type || 'coin',
+            value: token.value || 100
+          });
+
+          // Remove from map after a short delay (to allow animation to play)
+          setTimeout(() => {
+            tokens = tokens.filter(t => t.id !== token.id);
+
+            // Update the map display
+            const features = tokens.map(t => ({
+              type: 'Feature',
+              properties: {
+                id: t.id,
+                type: t.type || 'coin',
+                value: t.value || 100
+              },
+              geometry: {
+                type: 'Point',
+                coordinates: [t.lng, t.lat]
+              }
+            }));
+
+            const source = map.getSource('tokens-source');
+            if (source) {
+              source.setData({
+                type: 'FeatureCollection',
+                features
+              });
+            }
+          }, 100); // Small delay to ensure animation starts before token disappears
+        }
+      });
+    }
+
+    // Create visual and audio effect when token is collected
+    function createTokenCollectionEffect(lat, lng, value) {
+      // Convert lat/lng to screen coordinates
+      const point = map.project([lng, lat]);
+
+      // Create container for effects
+      const container = document.createElement('div');
+      container.className = 'token-collection-effect';
+      container.style.left = point.x + 'px';
+      container.style.top = point.y + 'px';
+
+      // Create burst effect
+      const burst = document.createElement('div');
+      burst.className = 'token-burst';
+      burst.style.left = '-30px';
+      burst.style.top = '-30px';
+      container.appendChild(burst);
+
+      // Create floating particles (multiple for better effect)
+      for (let i = 0; i < 5; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'token-particle';
+        particle.style.left = (Math.random() * 20 - 10) + 'px';
+        particle.style.top = (Math.random() * 20 - 10) + 'px';
+        particle.style.animationDelay = (i * 0.05) + 's';
+        container.appendChild(particle);
+      }
+
+      // Create value text that floats up
+      const text = document.createElement('div');
+      text.className = 'token-text';
+      text.textContent = '+' + value;
+      text.style.left = '-20px';
+      text.style.top = '-40px';
+      container.appendChild(text);
+
+      // Add to map container
+      map.getContainer().appendChild(container);
+
+      // Play collection sound (using Web Audio API for cross-platform compatibility)
+      playCollectionSound();
+
+      // Remove effect after animation completes
+      setTimeout(() => {
+        container.remove();
+      }, 1000);
+    }
+
+    // Play collection sound using Web Audio API
+    function playCollectionSound() {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Create a pleasant "coin pickup" sound
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        // Bright, pleasant frequency sweep (like a coin pickup)
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.1);
+
+        // Volume envelope
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+        oscillator.type = 'sine';
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.2);
+      } catch (error) {
+        console.log('Audio playback not available:', error);
+      }
+    }
+
+    function sendMessage(message) {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify(message));
+      } else {
+        console.log('Message to RN:', message);
+      }
+    }
+
+    // Error handling
+    window.addEventListener('error', function(e) {
+      sendMessage({
+        type: 'error',
+        message: e.message,
+        stack: e.error?.stack
+      });
+    });
+
+    console.log('Mapbox Gaming Map initialized');
+  </script>
+</body>
+</html>
