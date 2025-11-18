@@ -10,6 +10,8 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -18,7 +20,7 @@ import { RootStackParamList } from '../navigation/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || 'http://10.0.10.156:7392';
+const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || 'http://10.0.10.156:7392'; // Regular WiFi IP
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -72,6 +74,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
   const [hoursDriven, setHoursDriven] = useState(0);
   const [streetsThisWeek, setStreetsThisWeek] = useState(0);
   const [highestPosition, setHighestPosition] = useState(1);
+
+  // Avatar selection modal
+  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const [selectedAvatarTemp, setSelectedAvatarTemp] = useState(1);
 
   // Fetch profile on mount
   useEffect(() => {
@@ -184,12 +190,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
           onPress: async () => {
             try {
               await logout();
-              // Navigate back or to welcome screen
-              if (onBack) {
-                onBack();
-              } else {
-                navigation.navigate('Welcome');
-              }
+              // Always navigate to Welcome screen after logout
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Welcome' }],
+              });
             } catch (error) {
               console.error('Logout error:', error);
               Alert.alert('Error', 'Failed to logout');
@@ -201,12 +206,45 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
   };
 
   const handlePrizesPress = () => {
-    // TODO: Navigate to rewards/prizes screen
-    Alert.alert('Coming Soon', 'Prizes and rewards feature coming soon!');
+    navigation.navigate('Prizes');
   };
 
   const handleSettingsPress = () => {
     navigation.navigate('Settings');
+  };
+
+  const handleAvatarPress = () => {
+    setSelectedAvatarTemp(avatarNumber);
+    setShowAvatarSelector(true);
+  };
+
+  const handleAvatarSave = async () => {
+    try {
+      setLoading(true);
+
+      const response = await fetch(`${API_URL}/api/users/profile/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatarNumber: selectedAvatarTemp })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update avatar');
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setAvatarNumber(selectedAvatarTemp);
+        setShowAvatarSelector(false);
+        Alert.alert('Success', 'Avatar updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error updating avatar:', error);
+      Alert.alert('Error', 'Failed to update avatar');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -233,9 +271,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
           </TouchableOpacity>
 
           {/* Pixel Avatar */}
-          <View style={styles.avatarContainer}>
+          <TouchableOpacity style={styles.avatarContainer} onPress={handleAvatarPress} activeOpacity={0.8}>
             <Image source={getAvatarImage(avatarNumber)} style={styles.avatarImage} />
-          </View>
+            <View style={styles.editAvatarBadge}>
+              <Text style={styles.editAvatarIcon}>✏️</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Username and Tag */}
@@ -309,6 +350,63 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack }) => {
           <Text style={styles.logoutButtonText}>log out</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Avatar Selection Modal */}
+      <Modal
+        visible={showAvatarSelector}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowAvatarSelector(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.avatarSelectorModal}>
+            <Text style={styles.modalTitle}>Choose Your Avatar</Text>
+
+            <FlatList
+              data={Array.from({ length: 22 }, (_, i) => i + 1)}
+              numColumns={4}
+              keyExtractor={(item) => item.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.avatarOption,
+                    selectedAvatarTemp === item && styles.avatarOptionSelected,
+                  ]}
+                  onPress={() => setSelectedAvatarTemp(item)}
+                  activeOpacity={0.7}
+                >
+                  <Image source={getAvatarImage(item)} style={styles.avatarOptionImage} />
+                  {selectedAvatarTemp === item && (
+                    <View style={styles.selectedCheckmark}>
+                      <Text style={styles.checkmarkIcon}>✓</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={styles.avatarGrid}
+              showsVerticalScrollIndicator={false}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowAvatarSelector(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleAvatarSave}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -369,6 +467,22 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+  },
+  editAvatarBadge: {
+    position: 'absolute',
+    bottom: -8,
+    right: -8,
+    backgroundColor: '#D9E06A',
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#000000',
+  },
+  editAvatarIcon: {
+    fontSize: 16,
   },
   userInfo: {
     alignItems: 'center',
@@ -504,6 +618,95 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'Bakbak-One',
     color: '#FFFFFF',
+    letterSpacing: 1,
+  },
+  // Avatar Selector Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarSelectorModal: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    maxHeight: '80%',
+    borderWidth: 4,
+    borderColor: '#D9E06A',
+  },
+  modalTitle: {
+    fontSize: 28,
+    fontFamily: 'Gajraj-One',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  avatarGrid: {
+    paddingBottom: 16,
+  },
+  avatarOption: {
+    width: 70,
+    height: 70,
+    margin: 6,
+    borderRadius: 10,
+    borderWidth: 3,
+    borderColor: '#444444',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  avatarOptionSelected: {
+    borderColor: '#D9E06A',
+    borderWidth: 4,
+  },
+  avatarOptionImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  selectedCheckmark: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#D9E06A',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkmarkIcon: {
+    fontSize: 16,
+    color: '#000000',
+    fontWeight: 'bold',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#666666',
+    borderWidth: 2,
+    borderColor: '#888888',
+  },
+  saveButton: {
+    backgroundColor: '#D9E06A',
+    borderWidth: 3,
+    borderColor: '#000000',
+  },
+  modalButtonText: {
+    fontSize: 18,
+    fontFamily: 'Bakbak-One',
+    color: '#000000',
     letterSpacing: 1,
   },
 });

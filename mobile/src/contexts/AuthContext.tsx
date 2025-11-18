@@ -104,7 +104,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Better error messages
       if (error.message?.includes('timeout') || error.message?.includes('Network request failed')) {
-        throw new Error('Cannot connect to server. Make sure:\n1. Backend is running (npm run dev)\n2. You are on the same Wi-Fi network\n3. Firewall is not blocking port 7392');
+        throw new Error('Nije moguće povezivanje sa serverom.\n\nProverite:\n• Da li je backend pokrenut (npm run dev)\n• Da li ste na istom WiFi-u\n• Da li firewall blokira port 7392');
       }
 
       throw error;
@@ -146,8 +146,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userData);
 
       console.log('✅ Login successful with:', username);
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Login error:', error);
+
+      // Better error messages
+      if (error.message?.includes('timeout') || error.message?.includes('Network request failed')) {
+        throw new Error('Nije moguće povezivanje sa serverom.\n\nProverite:\n• Da li je backend pokrenut (npm run dev)\n• Da li ste na istom WiFi-u\n• Da li firewall blokira port 7392');
+      }
+
+      // Pass through other errors as-is
       throw error;
     } finally {
       setIsLoading(false);

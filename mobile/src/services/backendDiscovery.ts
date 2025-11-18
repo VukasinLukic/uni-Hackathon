@@ -19,7 +19,7 @@ const getIPCandidates = (): string[] => {
     // (will be injected at runtime)
 
     // Your current IP - FIRST PRIORITY!
-    '10.0.10.156', // Vukasin's current IP
+    '10.0.10.156', // Regular WiFi IP
 
     // Your network range
     '10.0.10.157',
@@ -212,7 +212,7 @@ export class BackendDiscovery {
 
     // Try most common patterns quickly - YOUR IP FIRST!
     const quickUrls = [
-      'http://10.0.10.156:7392', // Your current IP - FIRST!
+      'http://10.0.10.156:7392', // Your current WiFi IP - FIRST!
       'http://10.0.10.157:7392',
       'http://10.0.10.158:7392',
       'http://192.168.1.100:7392',

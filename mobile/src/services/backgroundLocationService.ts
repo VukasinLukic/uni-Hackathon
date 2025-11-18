@@ -84,24 +84,37 @@ function getCellId(lat: number, lng: number): string {
 class BackgroundLocationService {
   async startTracking() {
     try {
+      console.log('📍 [BackgroundLocation] Requesting foreground location permission...');
+
       // Request background permissions
       const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+      console.log(`📍 [BackgroundLocation] Foreground permission status: ${foregroundStatus}`);
+
       if (foregroundStatus !== 'granted') {
-        throw new Error('Foreground location permission not granted');
+        const error = new Error('Foreground location permission not granted');
+        console.error('❌ [BackgroundLocation] ERROR:', error.message);
+        throw error;
       }
 
+      console.log('📍 [BackgroundLocation] Requesting background location permission...');
       const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+      console.log(`📍 [BackgroundLocation] Background permission status: ${backgroundStatus}`);
+
       if (backgroundStatus !== 'granted') {
-        console.warn('Background location permission not granted');
+        console.warn('⚠️ [BackgroundLocation] Background location permission not granted - will track in foreground only');
         // Can still track in foreground
       }
 
       // Check if task is already running
       const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK);
+      console.log(`📍 [BackgroundLocation] Task registration status: ${isRegistered ? 'Already registered' : 'Not registered'}`);
+
       if (isRegistered) {
-        console.log('Background location task already registered');
+        console.log('✅ [BackgroundLocation] Background location task already registered');
         return;
       }
+
+      console.log('📍 [BackgroundLocation] Starting location updates...');
 
       // Start background location updates
       await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
@@ -118,9 +131,13 @@ class BackgroundLocationService {
       });
 
       await AsyncStorage.setItem(LOCATION_TRACKING_KEY, 'true');
-      console.log('Background location tracking started');
-    } catch (error) {
-      console.error('Error starting background tracking:', error);
+      console.log('✅ [BackgroundLocation] Background location tracking started successfully!');
+    } catch (error: any) {
+      console.error('❌ [BackgroundLocation] CRITICAL ERROR starting background tracking:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
       throw error;
     }
   }

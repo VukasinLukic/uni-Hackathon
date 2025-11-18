@@ -11,6 +11,7 @@ import PermissionsScreen from '../screens/onboarding/PermissionsScreen';
 // Main App Screens
 import HomeScreen from '../screens/HomeScreenWithMap';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { PrizesScreen } from '../screens/PrizesScreen';
 import AchievementsScreen from '../screens/AchievementsScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -36,6 +37,7 @@ export type RootStackParamList = {
   // Main App
   Home: undefined;
   Profile: { userId?: string };
+  Prizes: undefined;
   Achievements: undefined;
   Leaderboard: undefined;
   Settings: undefined;
@@ -92,6 +94,7 @@ export default function AppNavigator({ initialRouteName = 'Welcome' }: AppNaviga
         {/* Main App Screens */}
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Prizes" component={PrizesScreen} />
         <Stack.Screen name="Achievements" component={AchievementsScreen} />
         <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />

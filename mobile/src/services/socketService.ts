@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.10.156:7392';
+const SOCKET_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.10.156:7392'; // Regular WiFi IP
 
 class SocketService {
   private socket: Socket | null = null;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, StatusBar, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, Dimensions, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Svg, Line, Circle, Path, G, Text as SvgText } from 'react-native-svg';
 import Button from '../components/Button';
@@ -22,6 +22,15 @@ export default function ViewGraphsScreen({ onBack }: ViewGraphsScreenProps) {
   const [maxValue, setMaxValue] = useState(2.0);
   const [currentMagnitude, setCurrentMagnitude] = useState(0);
   const [peakDetected, setPeakDetected] = useState(false);
+  const [peakCount, setPeakCount] = useState(0);
+  const [minMagnitude, setMinMagnitude] = useState(0);
+  const [maxMagnitude, setMaxMagnitude] = useState(0);
+  const [accelX, setAccelX] = useState(0);
+  const [accelY, setAccelY] = useState(0);
+  const [accelZ, setAccelZ] = useState(0);
+  const [gyroX, setGyroX] = useState(0);
+  const [gyroY, setGyroY] = useState(0);
+  const [gyroZ, setGyroZ] = useState(0);
 
   const sensorServiceRef = useRef(new SensorService());
 
@@ -39,11 +48,21 @@ export default function ViewGraphsScreen({ onBack }: ViewGraphsScreenProps) {
         const magnitude = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
         setCurrentMagnitude(magnitude);
 
+        // Update individual accelerometer values
+        setAccelX(data.x);
+        setAccelY(data.y);
+        setAccelZ(data.z);
+
         // Detect peaks (potential potholes)
         if (magnitude > 1.5) {
           setPeakDetected(true);
+          setPeakCount(prev => prev + 1);
           setTimeout(() => setPeakDetected(false), 500);
         }
+
+        // Update min/max
+        setMinMagnitude(prev => prev === 0 ? magnitude : Math.min(prev, magnitude));
+        setMaxMagnitude(prev => Math.max(prev, magnitude));
 
         setDataPoints((prev) => {
           const newData = [...prev, magnitude];
@@ -58,7 +77,11 @@ export default function ViewGraphsScreen({ onBack }: ViewGraphsScreenProps) {
           return newData;
         });
       },
-      onGyroscope: () => {}, // Not used for graphs
+      onGyroscope: (data: any) => {
+        setGyroX(data.x);
+        setGyroY(data.y);
+        setGyroZ(data.z);
+      },
     });
 
     setIsMonitoring(true);
@@ -81,6 +104,15 @@ export default function ViewGraphsScreen({ onBack }: ViewGraphsScreenProps) {
     setDataPoints([]);
     setMaxValue(2.0);
     setPeakDetected(false);
+    setPeakCount(0);
+    setMinMagnitude(0);
+    setMaxMagnitude(0);
+    setAccelX(0);
+    setAccelY(0);
+    setAccelZ(0);
+    setGyroX(0);
+    setGyroY(0);
+    setGyroZ(0);
   };
 
   // Generate SVG path from data points
@@ -100,9 +132,10 @@ export default function ViewGraphsScreen({ onBack }: ViewGraphsScreenProps) {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          {/* Header */}
+          <View style={styles.header}>
           <Button
             title="← Back"
             variant="outline"
@@ -224,6 +257,79 @@ export default function ViewGraphsScreen({ onBack }: ViewGraphsScreenProps) {
           </View>
         </Card>
 
+        {/* Statistics Card */}
+        <Card style={styles.statsCard}>
+          <Text style={styles.statsTitle}>📊 Statistics</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Data Points</Text>
+              <Text style={styles.statValue}>{dataPoints.length}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Peaks Detected</Text>
+              <Text style={styles.statValue}>{peakCount}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Min Value</Text>
+              <Text style={styles.statValue}>{minMagnitude.toFixed(2)}g</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Max Value</Text>
+              <Text style={styles.statValue}>{maxMagnitude.toFixed(2)}g</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Average</Text>
+              <Text style={styles.statValue}>
+                {dataPoints.length > 0
+                  ? (dataPoints.reduce((a, b) => a + b, 0) / dataPoints.length).toFixed(2)
+                  : '0.00'}g
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Current</Text>
+              <Text style={styles.statValue}>{currentMagnitude.toFixed(2)}g</Text>
+            </View>
+          </View>
+        </Card>
+
+        {/* Accelerometer Values Card */}
+        <Card style={styles.sensorCard}>
+          <Text style={styles.sensorTitle}>📱 Accelerometer</Text>
+          <View style={styles.sensorTable}>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableLabel}>X:</Text>
+              <Text style={styles.tableValue}>{accelX.toFixed(3)}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableLabel}>Y:</Text>
+              <Text style={styles.tableValue}>{accelY.toFixed(3)}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableLabel}>Z:</Text>
+              <Text style={styles.tableValue}>{accelZ.toFixed(3)}</Text>
+            </View>
+          </View>
+        </Card>
+
+        {/* Gyroscope Values Card */}
+        <Card style={styles.sensorCard}>
+          <Text style={styles.sensorTitle}>🔄 Gyroscope</Text>
+          <View style={styles.sensorTable}>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableLabel}>X:</Text>
+              <Text style={styles.tableValue}>{gyroX.toFixed(3)}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableLabel}>Y:</Text>
+              <Text style={styles.tableValue}>{gyroY.toFixed(3)}</Text>
+            </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableLabel}>Z:</Text>
+              <Text style={styles.tableValue}>{gyroZ.toFixed(3)}</Text>
+            </View>
+          </View>
+        </Card>
+
         {/* Info Card */}
         <Card style={styles.infoCard}>
           <Text style={styles.infoTitle}>💡 How to Use</Text>
@@ -235,7 +341,8 @@ export default function ViewGraphsScreen({ onBack }: ViewGraphsScreenProps) {
             • Shake device to simulate bumps
           </Text>
         </Card>
-      </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -245,9 +352,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f7',
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
     paddingHorizontal: 24,
+    paddingBottom: 24,
   },
   header: {
     paddingTop: 20,
@@ -311,7 +421,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#000000',
-    marginBottom: 16,
+    marginBottom: 4,
     letterSpacing: -0.3,
   },
   graphContainer: {
@@ -338,6 +448,80 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 13,
     color: '#8e8e93',
+  },
+  statsCard: {
+    marginBottom: 24,
+  },
+  statsTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statItem: {
+    flex: 1,
+    minWidth: '30%',
+    backgroundColor: '#f0f0f5',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 13,
+    color: '#8e8e93',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000000',
+    letterSpacing: -0.5,
+  },
+  sensorCard: {
+    marginBottom: 24,
+    backgroundColor: '#ffffff',
+  },
+  sensorTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+  sensorTable: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+  },
+  tableLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+    width: 40,
+  },
+  tableValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000000',
+    fontFamily: 'monospace',
+    textAlign: 'right',
+    flex: 1,
   },
   infoCard: {
     backgroundColor: '#e8f5e9',

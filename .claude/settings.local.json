@@ -45,7 +45,8 @@
       "Bash(mobile/src/screens/HomeScreenLegacy.tsx)",
       "Bash(npm ls:*)",
       "Bash(ipconfig:*)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(if not exist \"c:\\Users\\Vukasin\\Documents\\git projekti\\uni-Hackathon\\docs\" mkdir \"c:\\Users\\Vukasin\\Documents\\git projekti\\uni-Hackathon\\docs\")"
     ],
     "deny": [],
     "ask": []

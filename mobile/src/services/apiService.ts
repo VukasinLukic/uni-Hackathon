@@ -3,7 +3,7 @@ import { MockDataService } from './mockDataService';
 import { BackendDiscovery } from './backendDiscovery';
 
 // Backend API base URL - will be auto-discovered!
-let BACKEND_HOST = 'http://10.0.10.156:7392'; // Default fallback - Vukasin's current IP
+let BACKEND_HOST = 'http://10.0.10.156:7392'; // Default fallback - Regular WiFi IP
 let API_BASE_URL = `${BACKEND_HOST}/api`;
 
 // Backend availability state

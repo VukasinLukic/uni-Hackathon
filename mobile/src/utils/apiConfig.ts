@@ -1,7 +1,7 @@
 // API Configuration with fallback support
 
 const POSSIBLE_URLS = [
-  process.env.EXPO_PUBLIC_API_URL || 'http://10.0.10.156:7392',
+  process.env.EXPO_PUBLIC_API_URL || 'http://10.0.10.156:7392', // Regular WiFi IP
   'http://localhost:7392',
   'http://127.0.0.1:7392',
   'http://10.0.0.1:7392', // Common router IP

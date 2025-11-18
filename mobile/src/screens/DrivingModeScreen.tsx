@@ -124,30 +124,33 @@ export default function DrivingModeScreen({
   };
 
   const startMonitoring = async () => {
-    const sensorService = sensorServiceRef.current;
-    const locationService = locationServiceRef.current;
-    const detectionService = detectionServiceRef.current;
+    try {
+      console.log('🚗 [DrivingMode] Starting monitoring...');
 
-    // Setup detection callback
-    detectionService.setCallback(async (event) => {
-      setDiscoveriesDetected((prev) => prev + 1);
-      setLastDetection(new Date().toLocaleTimeString());
-      console.log('🌟 DISCOVERY MOMENT DETECTED!', event);
+      const sensorService = sensorServiceRef.current;
+      const locationService = locationServiceRef.current;
+      const detectionService = detectionServiceRef.current;
 
-      // Send event to backend
-      try {
-        console.log('📤 Sending discovery event to backend...');
-        const response = await APIService.sendPotholeEvent({
-          location: {
-            type: 'Point',
-            coordinates: [event.location.lng, event.location.lat],
-          },
-          accelerationData: {
-            magnitude: event.magnitude,
-            x: 0,
-            y: 0,
-            z: 0,
-          },
+      // Setup detection callback
+      detectionService.setCallback(async (event) => {
+        setDiscoveriesDetected((prev) => prev + 1);
+        setLastDetection(new Date().toLocaleTimeString());
+        console.log('🌟 DISCOVERY MOMENT DETECTED!', event);
+
+        // Send event to backend
+        try {
+          console.log('📤 Sending discovery event to backend...');
+          const response = await APIService.sendPotholeEvent({
+            location: {
+              type: 'Point',
+              coordinates: [event.location.lng, event.location.lat],
+            },
+            accelerationData: {
+              magnitude: event.magnitude,
+              x: 0,
+              y: 0,
+              z: 0,
+            },
           gyroscopeData: {
             alpha: 0,
             beta: 0,
@@ -173,50 +176,70 @@ export default function DrivingModeScreen({
       } catch (error: any) {
         console.error('❌ Failed to send event to backend:', error);
       }
-    });
+      });
 
-    // Start location tracking
-    await locationService.startTracking((location) => {
-      setSpeed(locationService.getCurrentSpeed());
+      console.log('📍 [DrivingMode] Starting location tracking...');
 
-      // Update map with current location
-      if (mapRef.current && location) {
-        mapRef.current.updateLocation(
-          location.coords.latitude,
-          location.coords.longitude
-        );
-      }
-    });
+      // Start location tracking
+      await locationService.startTracking((location) => {
+        setSpeed(locationService.getCurrentSpeed());
 
-    // Start background location tracking
-    await backgroundLocationService.startTracking();
-
-    // Start sensors
-    let lastGyroData: GyroscopeMeasurement = { x: 0, y: 0, z: 0, timestamp: 0 };
-
-    await sensorService.startMonitoring({
-      onAccelerometer: (data: AccelerometerMeasurement) => {
-        const location = locationService.getCurrentLocation();
-        const currentSpeed = locationService.getCurrentSpeed();
-
-        if (location) {
-          detectionService.processAccelerometerData(
-            data,
-            lastGyroData,
-            {
-              lat: location.coords.latitude,
-              lng: location.coords.longitude,
-            },
-            currentSpeed
+        // Update map with current location
+        if (mapRef.current && location) {
+          mapRef.current.updateLocation(
+            location.coords.latitude,
+            location.coords.longitude
           );
         }
-      },
-      onGyroscope: (data: GyroscopeMeasurement) => {
-        lastGyroData = data;
-      },
-    });
+      });
 
-    setIsMonitoring(true);
+      console.log('✅ [DrivingMode] Location tracking started');
+      console.log('📍 [DrivingMode] Starting background location tracking...');
+
+      // Start background location tracking
+      await backgroundLocationService.startTracking();
+
+      console.log('✅ [DrivingMode] Background location tracking started');
+      console.log('📱 [DrivingMode] Starting sensors...');
+
+      // Start sensors
+      let lastGyroData: GyroscopeMeasurement = { x: 0, y: 0, z: 0, timestamp: 0 };
+
+      await sensorService.startMonitoring({
+        onAccelerometer: (data: AccelerometerMeasurement) => {
+          const location = locationService.getCurrentLocation();
+          const currentSpeed = locationService.getCurrentSpeed();
+
+          if (location) {
+            detectionService.processAccelerometerData(
+              data,
+              lastGyroData,
+              {
+                lat: location.coords.latitude,
+                lng: location.coords.longitude,
+              },
+              currentSpeed
+            );
+          }
+        },
+        onGyroscope: (data: GyroscopeMeasurement) => {
+          lastGyroData = data;
+        },
+      });
+
+      console.log('✅ [DrivingMode] Sensors started');
+      console.log('✅ [DrivingMode] All systems running!');
+
+      setIsMonitoring(true);
+    } catch (error: any) {
+      console.error('❌ [DrivingMode] CRITICAL ERROR starting driving mode:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+      Alert.alert('Error', `Failed to start driving mode: ${error.message}`);
+      throw error;
+    }
   };
 
   const stopMonitoring = async () => {

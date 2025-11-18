@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Dimensions, ScrollView, Animated, PanResponder, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Dimensions, ScrollView, Animated, PanResponder, Modal, Alert, Image } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import MapboxGamingMap, { MapboxGamingMapRef } from '../components/MapboxGamingMap';
 import ActionButton from '../components/ActionButton';
@@ -14,7 +14,36 @@ import { DetectionService } from '../services/detectionService';
 import { APIService } from '../services/apiService';
 
 const { width, height } = Dimensions.get('window');
-const API_URL = 'http://10.0.10.156:7392';
+const API_URL = 'http://10.0.10.156:7392'; // Regular WiFi IP
+
+// Helper to get avatar image
+const getAvatarImage = (avatarNumber: number = 1) => {
+  const avatarImages: { [key: number]: any } = {
+    1: require('../../assets/images/1.png'),
+    2: require('../../assets/images/2.png'),
+    3: require('../../assets/images/3.png'),
+    4: require('../../assets/images/4.png'),
+    5: require('../../assets/images/5.png'),
+    6: require('../../assets/images/6.png'),
+    7: require('../../assets/images/7.png'),
+    8: require('../../assets/images/8.png'),
+    9: require('../../assets/images/9.png'),
+    10: require('../../assets/images/10.png'),
+    11: require('../../assets/images/11.png'),
+    12: require('../../assets/images/12.png'),
+    13: require('../../assets/images/13.png'),
+    14: require('../../assets/images/14.png'),
+    15: require('../../assets/images/15.png'),
+    16: require('../../assets/images/16.png'),
+    17: require('../../assets/images/17.png'),
+    18: require('../../assets/images/18.png'),
+    19: require('../../assets/images/19.png'),
+    20: require('../../assets/images/20.png'),
+    21: require('../../assets/images/21.png'),
+    22: require('../../assets/images/22.png'),
+  };
+  return avatarImages[avatarNumber] || avatarImages[1];
+};
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -54,16 +83,24 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
   const [showDrivingModePopup, setShowDrivingModePopup] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [potholeCount, setPotholeCount] = useState(0);
+  const [collectedTokenIds, setCollectedTokenIds] = useState<Set<string>>(new Set());
+  const [popupDismissedUntil, setPopupDismissedUntil] = useState<number>(0);
+  const [potholeNotification, setPotholeNotification] = useState<{ visible: boolean; severity: number | null }>({ visible: false, severity: null });
   const sensorServiceRef = useRef(new SensorService());
   const detectionServiceRef = useRef(new DetectionService());
+  const userLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const currentSpeedRef = useRef<number>(0);
 
   // Bottom modal animation
   const modalHeight = useRef(new Animated.Value(SNAP_POINTS.MIN)).current;
   const [currentSnapPoint, setCurrentSnapPoint] = useState(SNAP_POINTS.MIN);
 
-  // Current user data
-  const currentUser = user || { name: 'simica', avatarNumber: 3 };
-  const userPoints = 0; // Will be fetched from leaderboard data
+  // Current user data - Show username and token count
+  const currentUser = {
+    username: user?.username || user?.licensePlate || 'Player',
+    avatarNumber: user?.avatarNumber || 1,
+  };
+  const userTokenCount = tokens.length; // Number of tokens user has collected
 
   // Fetch leaderboard data
   const fetchLeaderboard = async () => {
@@ -82,21 +119,38 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
     }
   };
 
-  // Load path history from storage on mount
+  // Load path history, explored cells, and collected tokens from storage on mount
   useEffect(() => {
-    const loadPathHistory = async () => {
+    const loadSavedData = async () => {
       try {
+        // Load path history
         const savedPath = await AsyncStorage.getItem('@path_history');
         if (savedPath) {
           const parsed = JSON.parse(savedPath);
           setPathHistory(parsed);
           console.log(`📍 Loaded ${parsed.length} path points from storage`);
         }
+
+        // Load explored cells
+        const savedCells = await AsyncStorage.getItem('@explored_cells');
+        if (savedCells) {
+          const parsedCells = JSON.parse(savedCells);
+          setExploredCells(parsedCells);
+          console.log(`🗺️ Loaded ${parsedCells.length} explored cells from storage`);
+        }
+
+        // Load collected token IDs
+        const savedTokens = await AsyncStorage.getItem('@collected_tokens');
+        if (savedTokens) {
+          const parsedTokens = JSON.parse(savedTokens);
+          setCollectedTokenIds(new Set(parsedTokens));
+          console.log(`🪙 Loaded ${parsedTokens.length} collected token IDs from storage`);
+        }
       } catch (error) {
-        console.error('Error loading path history:', error);
+        console.error('Error loading saved data:', error);
       }
     };
-    loadPathHistory();
+    loadSavedData();
   }, []);
 
   // Save path history whenever it changes
@@ -114,64 +168,106 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
     savePath();
   }, [pathHistory]);
 
+  // Save explored cells whenever they change
+  useEffect(() => {
+    const saveCells = async () => {
+      if (exploredCells.length > 0) {
+        try {
+          await AsyncStorage.setItem('@explored_cells', JSON.stringify(exploredCells));
+          console.log(`💾 Saved ${exploredCells.length} explored cells to storage`);
+        } catch (error) {
+          console.error('Error saving explored cells:', error);
+        }
+      }
+    };
+    saveCells();
+  }, [exploredCells]);
+
+  // Save collected token IDs whenever they change
+  useEffect(() => {
+    const saveTokens = async () => {
+      if (collectedTokenIds.size > 0) {
+        try {
+          await AsyncStorage.setItem('@collected_tokens', JSON.stringify(Array.from(collectedTokenIds)));
+          console.log(`💾 Saved ${collectedTokenIds.size} collected token IDs to storage`);
+        } catch (error) {
+          console.error('Error saving collected tokens:', error);
+        }
+      }
+    };
+    saveTokens();
+  }, [collectedTokenIds]);
+
   // Fetch leaderboard on mount
   useEffect(() => {
     fetchLeaderboard();
   }, []);
 
   const generateTestTokens = (currentLocation?: { latitude: number; longitude: number }) => {
-    // Use provided location, or user's location, or Temisvar center
-    const centerLat = currentLocation?.latitude || userLocation?.latitude || 45.7489;
-    const centerLng = currentLocation?.longitude || userLocation?.longitude || 21.2087;
+    // Timisoara center coordinates
+    const timisoareCenter = { lat: 45.7489, lng: 21.2087 };
 
-    console.log(`🪙 Generating tokens around: ${centerLat}, ${centerLng}`);
+    console.log(`🪙 Generating 100 tokens across all of Timisoara`);
 
-    // Generate more tokens in various directions (within ~300m)
-    const testTokens = [
-      // TOKEN AT EXACT USER LOCATION - should be collected immediately!
-      { id: 'token-instant', lat: centerLat, lng: centerLng, value: 500 },
+    const newTokens: Array<{ id: string; lat: number; lng: number; value: number }> = [];
 
-      // Very close tokens (~5-10m) - easy to collect
-      { id: 'token-nearby-1', lat: centerLat + 0.00005, lng: centerLng + 0.00005, value: 200 },
-      { id: 'token-nearby-2', lat: centerLat - 0.00005, lng: centerLng - 0.00005, value: 200 },
+    // Cover entire Timisoara area: approximately 10km x 10km
+    // 1 degree latitude ≈ 111km, 1 degree longitude ≈ 78km (at this latitude)
+    const cityRadiusLat = 0.045; // ~5km north-south (10km total)
+    const cityRadiusLng = 0.064; // ~5km east-west (10km total)
 
-      // Close tokens (~50-100m)
-      { id: 'token-1', lat: centerLat + 0.0005, lng: centerLng + 0.0007, value: 100 },
-      { id: 'token-2', lat: centerLat - 0.0006, lng: centerLng + 0.0005, value: 150 },
-      { id: 'token-3', lat: centerLat + 0.0007, lng: centerLng - 0.0004, value: 200 },
-      { id: 'token-4', lat: centerLat - 0.0004, lng: centerLng - 0.0008, value: 100 },
+    // Grid spacing to generate approximately 100 tokens
+    // Grid will be ~10x10 = 100 potential positions
+    const gridSpacing = 0.009; // ~1km between grid points
 
-      // Medium distance tokens (~100-150m)
-      { id: 'token-5', lat: centerLat + 0.0010, lng: centerLng + 0.0012, value: 250 },
-      { id: 'token-6', lat: centerLat - 0.0012, lng: centerLng + 0.0010, value: 300 },
-      { id: 'token-7', lat: centerLat + 0.0012, lng: centerLng - 0.0010, value: 100 },
-      { id: 'token-8', lat: centerLat - 0.0010, lng: centerLng - 0.0013, value: 200 },
+    for (let latOffset = -cityRadiusLat; latOffset <= cityRadiusLat; latOffset += gridSpacing) {
+      for (let lngOffset = -cityRadiusLng; lngOffset <= cityRadiusLng; lngOffset += gridSpacing) {
+        const lat = timisoareCenter.lat + latOffset;
+        const lng = timisoareCenter.lng + lngOffset;
 
-      // Further tokens (~150-200m)
-      { id: 'token-9', lat: centerLat + 0.0015, lng: centerLng + 0.0018, value: 150 },
-      { id: 'token-10', lat: centerLat - 0.0018, lng: centerLng + 0.0015, value: 250 },
-      { id: 'token-11', lat: centerLat + 0.0017, lng: centerLng - 0.0016, value: 300 },
-      { id: 'token-12', lat: centerLat - 0.0016, lng: centerLng - 0.0017, value: 100 },
+        // Create unique ID based on grid position (deterministic)
+        const gridLat = Math.round(lat * 1000); // Grid precision
+        const gridLng = Math.round(lng * 1000);
+        const tokenId = `token-${gridLat}-${gridLng}`;
 
-      // Distant tokens (~200-300m)
-      { id: 'token-13', lat: centerLat + 0.0022, lng: centerLng + 0.0025, value: 200 },
-      { id: 'token-14', lat: centerLat - 0.0025, lng: centerLng + 0.0022, value: 150 },
-      { id: 'token-15', lat: centerLat + 0.0024, lng: centerLng - 0.0023, value: 250 },
-      { id: 'token-16', lat: centerLat - 0.0023, lng: centerLng - 0.0024, value: 300 },
+        // Skip if this token was already collected
+        if (collectedTokenIds.has(tokenId)) {
+          continue;
+        }
 
-      // Bonus diagonal tokens
-      { id: 'token-17', lat: centerLat + 0.0020, lng: centerLng, value: 200 },
-      { id: 'token-18', lat: centerLat - 0.0020, lng: centerLng, value: 200 },
-      { id: 'token-19', lat: centerLat, lng: centerLng + 0.0020, value: 200 },
-      { id: 'token-20', lat: centerLat, lng: centerLng - 0.0020, value: 200 },
-    ];
+        // Skip if token already exists in current list
+        if (tokens.find(t => t.id === tokenId)) {
+          continue;
+        }
 
-    setTokens(testTokens);
-    console.log('🪙 Generated test tokens near you:', testTokens.length);
+        // Random seed based on grid position (deterministic but appears random)
+        const seedValue = (gridLat * 7919 + gridLng * 6571) % 100;
+
+        // Generate token 100% of the time (all grid positions have tokens)
+        // Vary token values based on seed
+        const value = [50, 100, 150, 200, 250][seedValue % 5];
+
+        newTokens.push({
+          id: tokenId,
+          lat,
+          lng,
+          value,
+        });
+      }
+    }
+
+    // Filter out already collected tokens
+    const validTokens = newTokens.filter(token => !collectedTokenIds.has(token.id));
+
+    setTokens(validTokens);
+    console.log(`🪙 Generated ${validTokens.length} tokens across Timisoara. Collected: ${collectedTokenIds.size}`);
   };
 
   const handleTokenCollected = async (tokenId: string, type: string, value: number) => {
     console.log(`🪙 Token collected! ID: ${tokenId}, Value: ${value}`);
+
+    // Mark token as collected permanently
+    setCollectedTokenIds(prev => new Set(prev).add(tokenId));
 
     // Remove collected token from UI immediately
     setTokens(prev => prev.filter(t => t.id !== tokenId));
@@ -261,6 +357,9 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
             console.log('📍 Location update:', newPos);
             setUserLocation(newPos);
 
+            // Update tokens in 500m radius around new location
+            generateTestTokens(newPos);
+
             // Add to path history
             setPathHistory(prev => {
               const newPath = [...prev, [newPos.longitude, newPos.latitude]];
@@ -274,11 +373,22 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
             // Get speed in km/h (speed is in m/s)
             const speedKmh = (location.coords.speed || 0) * 3.6;
             setCurrentSpeed(speedKmh);
+            currentSpeedRef.current = speedKmh;
+            userLocationRef.current = newPos;
 
             // Detect driving mode: speed > 15 km/h indicates vehicle
             if (speedKmh > 15 && !isDrivingModeActive) {
               console.log('🚗 Driving mode detected! Speed:', speedKmh.toFixed(1), 'km/h');
-              setShowDrivingModePopup(true);
+
+              // Auto-activate driving mode without popup
+              const now = Date.now();
+              if (now > popupDismissedUntil) {
+                console.log('✅ Auto-activating driving mode');
+                startDrivingMode();
+              } else {
+                const remainingMinutes = Math.ceil((popupDismissedUntil - now) / 60000);
+                console.log(`⏰ Driving mode in cooldown. ${remainingMinutes} minutes remaining.`);
+              }
             } else if (speedKmh <= 15 && isDrivingModeActive) {
               console.log('🚶 Walking speed detected. Speed:', speedKmh.toFixed(1), 'km/h');
               stopDrivingMode();
@@ -308,68 +418,92 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
   // Driving mode control functions
   const startDrivingMode = async () => {
     try {
-      console.log('🚗 Starting driving mode with pothole detection...');
+      console.log('🚗 [DrivingMode] Starting pothole detection...');
+
+      // Check if location is available
+      if (!userLocation) {
+        console.warn('⚠️ Cannot start driving mode: No location available yet');
+        return;
+      }
+
       setIsDrivingModeActive(true);
       setShowDrivingModePopup(false);
+      console.log('📍 Starting driving mode with location:', userLocation);
 
-      // Start background location tracking
-      await backgroundLocationService.startTracking();
-
-      // Start sensor monitoring for pothole detection
-      await sensorServiceRef.current.startMonitoring();
-
-      // Listen for pothole detections
-      detectionServiceRef.current.onPotholeDetected(async (severity: string, confidence: number) => {
-        console.log(`🕳️ Pothole detected! Severity: ${severity}, Confidence: ${confidence}`);
+      // Setup pothole detection callback (like TestMode)
+      detectionServiceRef.current.setCallback(async (event) => {
+        console.log('🕳️ POTHOLE DETECTED!', event);
         setPotholeCount(prev => prev + 1);
 
-        // Send pothole to backend
-        if (userLocation) {
-          try {
-            console.log('📤 Sending pothole event to backend...');
-            const response = await APIService.sendPotholeEvent({
-              location: {
-                type: 'Point',
-                coordinates: [userLocation.longitude, userLocation.latitude],
-              },
-              accelerationData: {
-                magnitude: confidence * 10, // Approximate magnitude from confidence
-                x: 0,
-                y: 0,
-                z: 0,
-              },
-              gyroscopeData: {
-                alpha: 0,
-                beta: 0,
-                gamma: 0,
-              },
-              deviceOrientation: {
-                pitch: 0,
-                roll: 0,
-                yaw: 0,
-              },
-              speed: currentSpeed,
-              timestamp: new Date(),
-              severity,
-              confidence,
-            });
+        // Send pothole to backend with current location
+        try {
+          console.log('📤 Sending pothole event to backend...');
+          const response = await APIService.sendPotholeEvent({
+            location: {
+              type: 'Point',
+              coordinates: [event.location.lng, event.location.lat],
+            },
+            accelerationData: {
+              magnitude: event.magnitude,
+              x: 0,
+              y: 0,
+              z: 0,
+            },
+            gyroscopeData: {
+              alpha: 0,
+              beta: 0,
+              gamma: 0,
+            },
+            speed: event.speed,
+          });
 
-            console.log('✅ Pothole event sent successfully!', response.data);
-          } catch (error) {
-            console.error('❌ Failed to send pothole event:', error);
-          }
+          console.log('🕳️ Event sent successfully!', response);
+
+          // Show minimalistic notification
+          const severity = response?.pothole?.severity || response?.severity || 0;
+          console.log('📢 Showing pothole notification with severity:', severity);
+          setPotholeNotification({ visible: true, severity });
+
+          // Auto-hide after 3 seconds
+          setTimeout(() => {
+            console.log('⏱️ Hiding pothole notification');
+            setPotholeNotification({ visible: false, severity: null });
+          }, 3000);
+        } catch (error: any) {
+          console.error('❌ Failed to send event to backend:', error);
         }
-
-        // Show notification (for testing)
-        Alert.alert(
-          '🕳️ Pothole Detected!',
-          `Severity: ${severity}\nConfidence: ${confidence.toFixed(2)}`,
-          [{ text: 'OK' }],
-          { cancelable: true }
-        );
       });
 
-      console.log('✅ Driving mode activated with background monitoring');
+      // Start sensors with accelerometer and gyroscope monitoring (like TestMode)
+      let lastGyroData: any = { x: 0, y: 0, z: 0, timestamp: 0 };
+
+      console.log('🔧 Starting sensor monitoring...');
+      await sensorServiceRef.current.startMonitoring({
+        onAccelerometer: (data: any) => {
+          const location = userLocationRef.current;
+          const speed = currentSpeedRef.current;
+          if (location) {
+            detectionServiceRef.current.processAccelerometerData(
+              data,
+              lastGyroData,
+              {
+                lat: location.latitude,
+                lng: location.longitude,
+              },
+              speed || 30 // Use actual speed from location tracking
+            );
+          } else {
+            console.warn('⚠️ Accelerometer data received but no location available');
+          }
+        },
+        onGyroscope: (data: any) => {
+          lastGyroData = data;
+        },
+      });
+
+      console.log('✅ Pothole detection active! Monitoring sensors...');
+      console.log('📊 Current speed:', currentSpeed, 'km/h');
+      console.log('📍 Current location:', userLocation);
     } catch (error) {
       console.error('Error starting driving mode:', error);
       Alert.alert('Error', 'Failed to start driving mode');
@@ -378,19 +512,28 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
 
   const stopDrivingMode = async () => {
     try {
-      console.log('🛑 Stopping driving mode...');
+      console.log('🛑 [DrivingMode] Stopping pothole detection...');
       setIsDrivingModeActive(false);
-
-      // Stop background location tracking
-      await backgroundLocationService.stopTracking();
 
       // Stop sensor monitoring
       sensorServiceRef.current.stopMonitoring();
+      detectionServiceRef.current.reset();
 
-      console.log('✅ Driving mode deactivated');
+      console.log('✅ [DrivingMode] Pothole detection stopped');
     } catch (error) {
-      console.error('Error stopping driving mode:', error);
+      console.error('❌ [DrivingMode] Error stopping:', error);
     }
+  };
+
+  // Dismiss driving mode popup with 30-minute cooldown
+  const dismissDrivingPopup = () => {
+    console.log('❌ User dismissed driving mode popup');
+    setShowDrivingModePopup(false);
+
+    // Set cooldown for 30 minutes (1800000 milliseconds)
+    const cooldownTime = Date.now() + 1800000;
+    setPopupDismissedUntil(cooldownTime);
+    console.log('⏰ Driving popup dismissed until:', new Date(cooldownTime).toLocaleTimeString());
   };
 
   // Handle area exploration from Mapbox map
@@ -525,6 +668,28 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
         </TouchableOpacity>
       </View>
 
+      {/* Pothole Detection Notification - Top Right Corner */}
+      {potholeNotification.visible && (
+        <View style={styles.potholeNotification}>
+          <Text style={styles.potholeNotificationIcon}>🕳️</Text>
+          <View style={styles.potholeNotificationTextContainer}>
+            <Text style={styles.potholeNotificationTitle}>Pothole Detected</Text>
+            <Text style={styles.potholeNotificationSeverity}>Severity: {potholeNotification.severity}</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Driving Mode Active Indicator - Top Left Corner */}
+      {isDrivingModeActive && (
+        <View style={styles.drivingModeIndicator}>
+          <Text style={styles.drivingModeIndicatorIcon}>🚗</Text>
+          <View style={styles.drivingModeIndicatorTextContainer}>
+            <Text style={styles.drivingModeIndicatorTitle}>Driving Mode</Text>
+            <Text style={styles.drivingModeIndicatorSubtitle}>{currentSpeed.toFixed(0)} km/h • {potholeCount} potholes</Text>
+          </View>
+        </View>
+      )}
+
       {/* Bottom Modal - Animated */}
       <Animated.View style={[styles.bottomModal, { height: modalHeight }]}>
         {/* Handle Indicator - Draggable */}
@@ -537,15 +702,13 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
             {/* User Info Row - Clickable to open Profile */}
             <TouchableOpacity style={styles.userInfoRow} onPress={handleProfileClick} activeOpacity={0.8}>
               <View style={styles.userAvatarContainer}>
-                <View style={[styles.userAvatar, { backgroundColor: getAvatarColor(currentUser.avatarNumber || 3) }]}>
-                  <Text style={styles.avatarInitial}>{getAvatarInitial(currentUser.name)}</Text>
-                </View>
+                <Image source={getAvatarImage(currentUser.avatarNumber || 1)} style={styles.userAvatar} />
               </View>
 
               <View style={styles.userTextInfo}>
-                <Text style={styles.userName}>{currentUser.name}</Text>
+                <Text style={styles.userName}>{currentUser.username}</Text>
                 <View style={styles.pointsRow}>
-                  <Text style={styles.userPoints}>{userPoints}</Text>
+                  <Text style={styles.userPoints}>{userTokenCount}</Text>
                   <Text style={styles.tokenIcon}>🪙</Text>
                 </View>
               </View>
@@ -553,7 +716,11 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
 
             {/* Prizes Section */}
             <View style={styles.prizesSection}>
-              <TouchableOpacity style={styles.prizesButton} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={styles.prizesButton}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('Prizes')}
+              >
                 <Text style={styles.prizesButtonText}>Your prizes</Text>
               </TouchableOpacity>
 
@@ -593,8 +760,9 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
                 <Text style={styles.emptyText}>No leaderboard data yet</Text>
               ) : (
                 leaderboardData.map((player) => {
-                  const isCurrentUser = player.name === currentUser.name;
-                  const avatarSize = player.rank <= 3 ? 42 : 30;
+                  // Match by licensePlate since that's unique
+                  const isCurrentUser = player.licensePlate === user?.licensePlate || player.name === currentUser.username;
+                  const avatarSize = player.rank <= 3 ? 48 : 36;
                   const medal = player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : '';
 
                   return (
@@ -606,13 +774,11 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
                       ]}
                     >
                     {/* Avatar */}
-                    <View style={[
-                      styles.leaderboardAvatar,
-                      { width: avatarSize, height: avatarSize, backgroundColor: getAvatarColor(player.avatar) }
-                    ]}>
-                      <Text style={[styles.leaderboardAvatarInitial, { fontSize: avatarSize * 0.5 }]}>
-                        {getAvatarInitial(player.name)}
-                      </Text>
+                    <View style={[styles.leaderboardAvatarContainer, { width: avatarSize, height: avatarSize }]}>
+                      <Image
+                        source={getAvatarImage(player.avatar || 1)}
+                        style={styles.leaderboardAvatarImage}
+                      />
                     </View>
 
                     {/* Name */}
@@ -647,51 +813,7 @@ export default function HomeScreenWithMap({ onProfile, onSettings }: HomeScreenP
       </Animated.View>
 
       {/* Driving Mode Detection Popup */}
-      <Modal
-        visible={showDrivingModePopup}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowDrivingModePopup(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.drivingModeModal}>
-            <Text style={styles.drivingModeIcon}>🚗</Text>
-            <Text style={styles.drivingModeTitle}>Driving Detected!</Text>
-            <Text style={styles.drivingModeMessage}>
-              You're in a vehicle. Activate driving mode to detect potholes automatically?
-            </Text>
-            <Text style={styles.drivingModeSpeed}>
-              Speed: {currentSpeed.toFixed(1)} km/h
-            </Text>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.activateButton]}
-                onPress={startDrivingMode}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.modalButtonText}>Activate</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.dismissButton]}
-                onPress={() => setShowDrivingModePopup(false)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.modalButtonText}>Dismiss</Text>
-              </TouchableOpacity>
-            </View>
-
-            {isDrivingModeActive && (
-              <View style={styles.statusIndicator}>
-                <View style={styles.activeIndicator} />
-                <Text style={styles.statusText}>Driving Mode Active</Text>
-                <Text style={styles.potholeCounter}>Potholes: {potholeCount}</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </Modal>
+      {/* Removed large driving mode modal - now using small indicator instead */}
 
       {/* Floating Action Button for Testing/Debug Tools */}
       <ActionButton
@@ -757,6 +879,78 @@ const styles = StyleSheet.create({
   settingsIcon: {
     fontSize: 26,
   },
+  potholeNotification: {
+    position: 'absolute',
+    top: 130,
+    right: 14,
+    backgroundColor: 'rgba(255, 87, 34, 0.95)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  potholeNotificationIcon: {
+    fontSize: 20,
+  },
+  potholeNotificationTextContainer: {
+    flexDirection: 'column',
+  },
+  potholeNotificationTitle: {
+    fontFamily: 'Bakbak-One',
+    fontSize: 12,
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  potholeNotificationSeverity: {
+    fontFamily: 'Bakbak-One',
+    fontSize: 10,
+    color: '#FFFFFF',
+    opacity: 0.9,
+  },
+  drivingModeIndicator: {
+    position: 'absolute',
+    top: 60,
+    left: 14,
+    backgroundColor: 'rgba(76, 175, 80, 0.95)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  drivingModeIndicatorIcon: {
+    fontSize: 20,
+  },
+  drivingModeIndicatorTextContainer: {
+    flexDirection: 'column',
+  },
+  drivingModeIndicatorTitle: {
+    fontFamily: 'Bakbak-One',
+    fontSize: 12,
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  drivingModeIndicatorSubtitle: {
+    fontFamily: 'Bakbak-One',
+    fontSize: 9,
+    color: '#FFFFFF',
+    opacity: 0.9,
+  },
   bottomModal: {
     position: 'absolute',
     bottom: 0,
@@ -797,9 +991,9 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 7,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#000000',
+    resizeMode: 'cover',
   },
   avatarInitial: {
     fontFamily: 'Bakbak-One',
@@ -912,17 +1106,17 @@ const styles = StyleSheet.create({
   currentUserRow: {
     backgroundColor: 'rgba(232, 243, 79, 0.2)',
   },
-  leaderboardAvatar: {
+  leaderboardAvatarContainer: {
     borderRadius: 7,
     marginRight: 12,
     overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#000000',
   },
-  leaderboardAvatarInitial: {
-    fontFamily: 'Bakbak-One',
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+  leaderboardAvatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   leaderboardName: {
     fontFamily: 'Gajraj-One',

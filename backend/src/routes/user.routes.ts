@@ -19,8 +19,8 @@ router.post('/signup', async (req, res) => {
       return res.status(400).json({ success: false, message: 'License plate already registered' });
     }
 
-    // Generate random avatar number 1-5
-    const randomAvatar = Math.floor(Math.random() * 5) + 1;
+    // Generate random avatar number 1-22 (pixel art avatars)
+    const randomAvatar = Math.floor(Math.random() * 22) + 1;
 
     // Create unique email using timestamp
     const uniqueEmail = `${licensePlate.toUpperCase()}-${Date.now()}@pavepatrol.app`;
@@ -155,11 +155,11 @@ router.put('/profile', checkJwt, getOrCreateUser, async (req, res) => {
   try {
     const { name, bio, phone, avatarNumber } = req.body;
 
-    // Validate avatarNumber
-    if (avatarNumber && (avatarNumber < 1 || avatarNumber > 5)) {
+    // Validate avatarNumber (now supports 1-22 for pixel art avatars)
+    if (avatarNumber && (avatarNumber < 1 || avatarNumber > 22)) {
       return res.status(400).json({
         success: false,
-        error: 'Avatar number must be between 1 and 5',
+        error: 'Avatar number must be between 1 and 22',
       });
     }
 
@@ -263,11 +263,11 @@ router.put('/profile/:userId', async (req, res) => {
     const { userId } = req.params;
     const { name, bio, phone, avatarNumber } = req.body;
 
-    // Validate avatarNumber
-    if (avatarNumber && (avatarNumber < 1 || avatarNumber > 5)) {
+    // Validate avatarNumber (now supports 1-22 for pixel art avatars)
+    if (avatarNumber && (avatarNumber < 1 || avatarNumber > 22)) {
       return res.status(400).json({
         success: false,
-        error: 'Avatar number must be between 1 and 5',
+        error: 'Avatar number must be between 1 and 22',
       });
     }
 

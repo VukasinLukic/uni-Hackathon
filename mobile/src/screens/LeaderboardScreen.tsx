@@ -15,7 +15,7 @@ import { COLORS } from '../utils/colors';
 import { FONTS } from '../utils/typography';
 import Constants from 'expo-constants';
 
-const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || 'http://10.0.10.156:7392';
+const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || 'http://10.0.10.156:7392'; // Regular WiFi IP
 
 interface LeaderboardEntry {
   rank: number;

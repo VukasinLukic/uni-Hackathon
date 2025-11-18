@@ -51,6 +51,78 @@
         transform: scale(1);
       }
     }
+
+    /* Token collection animation overlay */
+    .token-collection-effect {
+      position: absolute;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    .token-particle {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: radial-gradient(circle, #FFD700 0%, #FFA500 50%, transparent 100%);
+      border-radius: 50%;
+      animation: collectToken 0.6s ease-out forwards;
+    }
+
+    @keyframes collectToken {
+      0% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.5) translateY(-20px);
+        opacity: 0.8;
+      }
+      100% {
+        transform: scale(0.3) translateY(-60px);
+        opacity: 0;
+      }
+    }
+
+    .token-burst {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background: radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(255, 165, 0, 0.4) 40%, transparent 70%);
+      border-radius: 50%;
+      animation: burstEffect 0.5s ease-out forwards;
+    }
+
+    @keyframes burstEffect {
+      0% {
+        transform: scale(0.5);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(3);
+        opacity: 0;
+      }
+    }
+
+    .token-text {
+      position: absolute;
+      font-size: 24px;
+      font-weight: bold;
+      color: #FFD700;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      animation: floatUp 1s ease-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes floatUp {
+      0% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-80px);
+        opacity: 0;
+      }
+    }
   </style>
 </head>
 <body>
@@ -516,9 +588,16 @@
           });
         }
 
-        if (distance <= TOKEN_COLLECTION_RADIUS && !token.collected) {
-          console.log(`✅ COLLECTING TOKEN ${token.id}! Distance: ${distance.toFixed(2)}m`);
+        // Check if token is in an explored cell
+        const tokenCellId = getCellId(token.lat, token.lng);
+        const isInExploredCell = exploredCells.has(tokenCellId);
+
+        if (distance <= TOKEN_COLLECTION_RADIUS && !token.collected && isInExploredCell) {
+          console.log(`✅ COLLECTING TOKEN ${token.id}! Distance: ${distance.toFixed(2)}m, Cell: ${tokenCellId} (explored)`);
           token.collected = true;
+
+          // Create visual collection effect BEFORE removing token
+          createTokenCollectionEffect(token.lat, token.lng, token.value || 100);
 
           // Notify React Native
           sendMessage({
@@ -528,32 +607,110 @@
             value: token.value || 100
           });
 
-          // Remove from map (filter out collected token and reload)
-          tokens = tokens.filter(t => t.id !== token.id);
+          // Remove from map after a short delay (to allow animation to play)
+          setTimeout(() => {
+            tokens = tokens.filter(t => t.id !== token.id);
 
-          // Update the map display
-          const features = tokens.map(t => ({
-            type: 'Feature',
-            properties: {
-              id: t.id,
-              type: t.type || 'coin',
-              value: t.value || 100
-            },
-            geometry: {
-              type: 'Point',
-              coordinates: [t.lng, t.lat]
+            // Update the map display
+            const features = tokens.map(t => ({
+              type: 'Feature',
+              properties: {
+                id: t.id,
+                type: t.type || 'coin',
+                value: t.value || 100
+              },
+              geometry: {
+                type: 'Point',
+                coordinates: [t.lng, t.lat]
+              }
+            }));
+
+            const source = map.getSource('tokens-source');
+            if (source) {
+              source.setData({
+                type: 'FeatureCollection',
+                features
+              });
             }
-          }));
-
-          const source = map.getSource('tokens-source');
-          if (source) {
-            source.setData({
-              type: 'FeatureCollection',
-              features
-            });
-          }
+          }, 100); // Small delay to ensure animation starts before token disappears
         }
       });
+    }
+
+    // Create visual and audio effect when token is collected
+    function createTokenCollectionEffect(lat, lng, value) {
+      // Convert lat/lng to screen coordinates
+      const point = map.project([lng, lat]);
+
+      // Create container for effects
+      const container = document.createElement('div');
+      container.className = 'token-collection-effect';
+      container.style.left = point.x + 'px';
+      container.style.top = point.y + 'px';
+
+      // Create burst effect
+      const burst = document.createElement('div');
+      burst.className = 'token-burst';
+      burst.style.left = '-30px';
+      burst.style.top = '-30px';
+      container.appendChild(burst);
+
+      // Create floating particles (multiple for better effect)
+      for (let i = 0; i < 5; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'token-particle';
+        particle.style.left = (Math.random() * 20 - 10) + 'px';
+        particle.style.top = (Math.random() * 20 - 10) + 'px';
+        particle.style.animationDelay = (i * 0.05) + 's';
+        container.appendChild(particle);
+      }
+
+      // Create value text that floats up
+      const text = document.createElement('div');
+      text.className = 'token-text';
+      text.textContent = '+' + value;
+      text.style.left = '-20px';
+      text.style.top = '-40px';
+      container.appendChild(text);
+
+      // Add to map container
+      map.getContainer().appendChild(container);
+
+      // Play collection sound (using Web Audio API for cross-platform compatibility)
+      playCollectionSound();
+
+      // Remove effect after animation completes
+      setTimeout(() => {
+        container.remove();
+      }, 1000);
+    }
+
+    // Play collection sound using Web Audio API
+    function playCollectionSound() {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Create a pleasant "coin pickup" sound
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        // Bright, pleasant frequency sweep (like a coin pickup)
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.1);
+
+        // Volume envelope
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+
+        oscillator.type = 'sine';
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.2);
+      } catch (error) {
+        console.log('Audio playback not available:', error);
+      }
     }
 
     function sendMessage(message) {

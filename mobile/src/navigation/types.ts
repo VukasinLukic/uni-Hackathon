@@ -14,6 +14,7 @@ export type RootStackParamList = {
   Achievements: undefined;
   Leaderboard: undefined;
   Settings: undefined;
+  Prizes: undefined;
   PostSessionSummary: {
     sessionData: {
       distance: number;
